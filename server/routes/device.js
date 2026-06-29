@@ -3,7 +3,6 @@ import express from 'express';
 import { db, getSettings } from '../db.js';
 import { getPoemForTime, isScreensaver } from '../poem/scheduler.js';
 import { temporalContext } from '../poem/temporal.js';
-import { fallbackPoem } from '../poem/engine.js';
 
 export const deviceRouter = express.Router();
 
@@ -84,12 +83,13 @@ deviceRouter.post('/compose', async (req, res) => {
 
   touchDevice(screenId, req.body.buildId);
 
-  // During quiet hours the screen is blank, so don't spend tokens generating a
-  // poem nobody sees — return a cheap template poem with screensaver on.
+  // During quiet hours: send screensaver on AND an empty poem, so the device
+  // goes dark whether or not its firmware acts on the screensaver flag — and we
+  // spend no tokens generating a poem nobody sees.
   const screensaver = isScreensaver(t);
   let poem;
   if (screensaver) {
-    poem = { poemId: String(Date.now() % 1000000000), text: fallbackPoem(t) };
+    poem = { poemId: String(Date.now() % 1000000000), text: '' };
   } else {
     try {
       poem = await getPoemForTime(t, { screenId });
