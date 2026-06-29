@@ -68,10 +68,15 @@ function weightedPick(pool) {
 function pickFocus({ people, ctx, temporal, wx }) {
   const pool = [];
   for (const p of people) {
-    const details = [p.relationship, p.traits, p.interests, p.notes].filter((x) => x && x.trim());
+    // Poem fodder = traits/interests/notes. Relationship (son/mom/...) is NOT
+    // used as the hook: it's a role *within the family*, not a relationship to
+    // the clock, and dangling the bare word makes the poet say "my son".
+    const details = [p.traits, p.interests, p.notes].filter((x) => x && x.trim());
     const d = details.length ? randItem(details) : '';
     const kind = p.kind === 'pet' ? ' the pet' : '';
-    pool.push({ w: 3, desc: `${p.name}${kind}${d ? ` — ${d}` : ''}` });
+    const role = (p.relationship || '').trim();
+    const roleNote = role ? ` (${p.name} is the household's ${role})` : '';
+    pool.push({ w: 3, desc: `${p.name}${kind}${roleNote}${d ? ` — ${d}` : ''}`, name: p.name });
   }
   for (const c of ctx) {
     if (c.category === 'team') pool.push({ w: 1.2, desc: `the home team, ${c.value}` });
@@ -84,12 +89,14 @@ function pickFocus({ people, ctx, temporal, wx }) {
   const ev = pickEvent();
   if (ev) pool.push({ w: 1.2, desc: `a small happy thing in the air: ${ev.headline}` });
   if (!pool.length) pool.push({ w: 1, desc: 'this quiet minute at home' });
-  return weightedPick(pool).desc;
+  const pick = weightedPick(pool);
+  return { desc: pick.desc, name: pick.name || '' };
 }
 
 function systemPrompt(tone, rhyme) {
   return [
     'You are the poet inside a small family poem clock.',
+    'You are a warm, affectionate OBSERVER of this household — not a member of it, and not a parent, child, or relative of anyone in it. Refer to every person by their given name. NEVER use a first-person possessive about a person ("my son", "our daughter", "my wife", "my dad"); any relationship label you are given (son, mom, grandmother, etc.) describes their role within the family for your context only — it is NOT your relationship to them.',
     `Voice: ${tone}.`,
     'Write a VERY SHORT poem: 2 lines (a 3rd only if truly needed). Keep each line short.',
     'Separate lines with a single forward slash " / " (the device renders slashes as line breaks).',
@@ -97,6 +104,7 @@ function systemPrompt(tone, rhyme) {
       ? 'The lines MUST rhyme: the final word of each line has to rhyme cleanly with its partner as the words are actually spoken (a true rhyme, not just similar spelling). Do NOT end a line on the clock time or any number — numbers are hard to rhyme — so place the digits earlier in a line and end the lines on real rhyming words.'
       : 'Do NOT force a rhyme; free verse is good.',
     'Write about ONE subject only — the single focus you are given. Do NOT list other people, places, or topics. No catalogues, no cramming.',
+    'If the focus is a person or pet, you MUST name them by their given name at least once. Never refer to a person or pet only as "she", "he", or "they" — a reader must be able to tell who the poem is about.',
     'CRITICAL: include the clock time as DIGITS exactly as given (e.g. 2:07 or 9:45). Never spell the time in words; never change the digits.',
     'If you mention a temperature, always write it with a degree symbol (e.g. 24°), never as a bare number or the word "degrees".',
     'Be concrete and quiet — one small observation. Output ONLY the poem: no title, no quotation marks, no commentary.',
@@ -124,13 +132,14 @@ function dayPhrase(time24) {
   return 'late at night';
 }
 
-function buildUserPrompt(focus, time24, { retry = false, rhyme = false } = {}) {
+function buildUserPrompt(focus, time24, { retry = false, rhyme = false, name = '' } = {}) {
   return [
     `Focus on ONLY this one thing: ${focus}.`,
+    name ? `This poem is about ${name}. You MUST use the name "${name}" in the poem — do not refer to them only as "she", "he", or "they".` : '',
     `Right now it is ${dayPhrase(time24)} — ${displayTime(time24)} ${ampm(time24)}. The mood must match this time of day (never call evening or night "morning").`,
     `Include the time as these exact digits: ${displayTime(time24)} — but not as the last word of a line.`,
     retry
-      ? `IMPORTANT: your last attempt didn't work${rhyme ? ' (the lines must truly rhyme, and a line must not end on the time/number)' : ''}. Keep the digits ${displayTime(time24)} verbatim, keep it to 2 short lines${rhyme ? ', and make the final words rhyme cleanly' : ''}.`
+      ? `IMPORTANT: your last attempt didn't work${name ? ` (it must use the name "${name}")` : ''}${rhyme ? ' (the lines must truly rhyme, and a line must not end on the time/number)' : ''}. Keep the digits ${displayTime(time24)} verbatim, keep it to 2 short lines${rhyme ? ', and make the final words rhyme cleanly' : ''}.`
       : '',
     'Write the short poem now.',
   ].filter(Boolean).join('\n');
@@ -172,6 +181,18 @@ function looksValid(text, time24) {
   return mentionsTime(text, time24);
 }
 
+// When the focus is a person/pet, the poem must actually name them — otherwise
+// we get ambiguous "she drinks her protein" poems with no subject.
+function namePresent(text, name) {
+  if (!name) return true;
+  // match the first word of the name (handles "Sophie Goldman" -> "Sophie"),
+  // case-insensitive, on a word boundary.
+  const first = name.trim().split(/\s+/)[0];
+  if (!first) return true;
+  const esc = first.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`\\b${esc}\\b`, 'i').test(text);
+}
+
 function mentionsTime(text, time24) {
   const [h, m] = time24.split(':');
   const mm = m; // minutes always 2-digit
@@ -206,7 +227,7 @@ function newPoemId() {
 // Generate (and persist) a poem for the given local time24.
 export async function composePoem(time24, { screenId = '' } = {}) {
   const s = getSettings();
-  const focus = pickFocus(gather()); // ONE subject for this minute
+  const { desc: focus, name } = pickFocus(gather()); // ONE subject for this minute
   let text = '';
   let source = 'fallback';
   let model = s.model;
@@ -214,17 +235,17 @@ export async function composePoem(time24, { screenId = '' } = {}) {
   const rhyme = !!s.poem_rhyme;
   for (let attempt = 0; attempt < 3 && !text; attempt++) {
     try {
-      const raw = await generate(buildUserPrompt(focus, time24, { retry: attempt > 0, rhyme }), {
+      const raw = await generate(buildUserPrompt(focus, time24, { retry: attempt > 0, rhyme, name }), {
         system: systemPrompt(s.poem_tone, rhyme),
         timeoutMs: 45000,
         lane: 'poem',
       });
       const norm = normalizePoem(raw);
-      if (looksValid(norm, time24) && (!rhyme || rhymeShapeOk(norm))) {
+      if (looksValid(norm, time24) && (!rhyme || rhymeShapeOk(norm)) && namePresent(norm, name)) {
         text = norm;
         source = 'claude';
       } else {
-        console.warn(`[engine] attempt ${attempt + 1} rejected (shape/time/rhyme) for ${time24}`);
+        console.warn(`[engine] attempt ${attempt + 1} rejected (shape/time/rhyme/name) for ${time24}`);
       }
     } catch (err) {
       console.error(`[engine] claude failed (attempt ${attempt + 1}):`, err.message);
