@@ -109,9 +109,24 @@ function displayTime(time24) {
   return `${h12}:${String(m).padStart(2, '0')}`;
 }
 
+const ampm = (time24) => (Number(time24.split(':')[0]) < 12 ? 'AM' : 'PM');
+
+// Plain-language part of day for a 24h hour, so the poem never calls 11pm "morning".
+function dayPhrase(time24) {
+  const h = Number(time24.split(':')[0]);
+  if (h < 5) return 'the middle of the night';
+  if (h < 8) return 'early morning';
+  if (h < 12) return 'morning';
+  if (h < 14) return 'midday';
+  if (h < 18) return 'afternoon';
+  if (h < 21) return 'evening';
+  return 'late at night';
+}
+
 function buildUserPrompt(focus, time24, { retry = false, rhyme = false } = {}) {
   return [
     `Focus on ONLY this one thing: ${focus}.`,
+    `Right now it is ${dayPhrase(time24)} — ${displayTime(time24)} ${ampm(time24)}. The mood must match this time of day (never call evening or night "morning").`,
     `Include the time as these exact digits: ${displayTime(time24)} — but not as the last word of a line.`,
     retry
       ? `IMPORTANT: your last attempt didn't work${rhyme ? ' (the lines must truly rhyme, and a line must not end on the time/number)' : ''}. Keep the digits ${displayTime(time24)} verbatim, keep it to 2 short lines${rhyme ? ', and make the final words rhyme cleanly' : ''}.`
