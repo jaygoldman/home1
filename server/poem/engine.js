@@ -98,6 +98,7 @@ function systemPrompt(tone, rhyme) {
       : 'Do NOT force a rhyme; free verse is good.',
     'Write about ONE subject only — the single focus you are given. Do NOT list other people, places, or topics. No catalogues, no cramming.',
     'CRITICAL: include the clock time as DIGITS exactly as given (e.g. 2:07 or 9:45). Never spell the time in words; never change the digits.',
+    'If you mention a temperature, always write it with a degree symbol (e.g. 24°), never as a bare number or the word "degrees".',
     'Be concrete and quiet — one small observation. Output ONLY the poem: no title, no quotation marks, no commentary.',
   ].join(' ');
 }
@@ -155,6 +156,10 @@ function normalizePoem(text) {
   }
   // collapse whitespace
   t = t.replace(/\s*\/\s*/g, ' / ').replace(/[ \t]+/g, ' ').trim();
+  // Temperatures: "24 degrees"/"24C"/"24 C" -> "24°" (leave clock times alone).
+  t = t.replace(/(\d{1,3})\s*degrees?(\s*(celsius|fahrenheit|[cf]))?\b/gi, '$1°');
+  t = t.replace(/(\d{1,3})\s*°?\s*([CF])\b/g, '$1°$2');
+  t = t.replace(/(\d{1,3})\s+°/g, '$1°');
   return t;
 }
 
