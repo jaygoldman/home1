@@ -10,6 +10,7 @@ import Settings from './pages/Settings.jsx';
 
 export default function App() {
   const [session, setSession] = useState(undefined); // undefined=loading
+  const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
 
   async function refresh() {
@@ -40,21 +41,36 @@ export default function App() {
 
   return (
     <div className="app">
-      <nav className="sidebar">
-        <div className="brand">
-          <img className="brand-logo" src="/home1-logo.svg" alt="Home/1" />
-          <span className="tagline">poem clock</span>
+      <nav className={`sidebar${menuOpen ? ' open' : ''}`}>
+        <div className="sidebar-top">
+          <div className="brand">
+            <div className="brand-mark">
+              <img className="brand-logo" src="/home1-icon.svg" alt="" />
+              <span className="wordmark">Home/1</span>
+            </div>
+            <span className="tagline">poem clock</span>
+          </div>
+          <button
+            className="nav-toggle"
+            aria-label="Toggle menu"
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen((o) => !o)}
+          >
+            {menuOpen ? '✕' : '☰'}
+          </button>
         </div>
-        <div className="nav">
-          <NavLink to="/" end>Dashboard</NavLink>
-          <NavLink to="/people">People &amp; Pets</NavLink>
-          <NavLink to="/household">Household</NavLink>
-          <NavLink to="/notes">Notes</NavLink>
-          <NavLink to="/settings">Settings</NavLink>
-          <a className="ext" href="/sim" target="_blank" rel="noreferrer">Shelf preview ↗</a>
-        </div>
-        <div className="logout">
-          <button className="secondary small" onClick={logout}>Log out</button>
+        <div className="sidebar-menu">
+          <div className="nav" onClick={() => setMenuOpen(false)}>
+            <NavLink to="/" end>Dashboard</NavLink>
+            <NavLink to="/people">People &amp; Pets</NavLink>
+            <NavLink to="/household">Household</NavLink>
+            <NavLink to="/notes">Notes</NavLink>
+            <NavLink to="/settings">Settings</NavLink>
+            <a className="ext" href="/sim" target="_blank" rel="noreferrer">Shelf preview ↗</a>
+          </div>
+          <div className="logout">
+            <button className="secondary small" onClick={logout}>Log out</button>
+          </div>
         </div>
       </nav>
       <main className="main">

@@ -25,9 +25,23 @@ a { color: var(--accent); }
   width: 220px; background: var(--panel); border-right: 1px solid var(--border);
   padding: 22px 14px; display: flex; flex-direction: column; gap: 4px;
 }
+.sidebar-top { display: flex; align-items: flex-start; justify-content: space-between; }
+.nav-toggle { display: none; background: none; border: none; color: var(--ink); font-size: 22px; line-height: 1; padding: 6px 8px; cursor: pointer; }
+.nav-toggle:hover { filter: none; background: var(--panel-2); border-radius: 8px; }
 .brand { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin: 2px 8px 22px; }
-.brand .brand-logo { width: 158px; height: auto; display: block; }
+.brand .brand-mark { display: flex; align-items: center; gap: 9px; }
+.brand .brand-logo { width: 40px; height: auto; display: block; }
+/* Wordmark styled to match poem.town: Inter, medium weight, gentle tracking. */
+.brand .wordmark { font-size: 28px; font-weight: 500; letter-spacing: .025em; color: var(--ink); line-height: 1; }
 .brand .tagline { font-size: 11px; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; margin-left: 3px; }
+/* Larger lockup for the login screen. */
+.brand-lg .brand-mark { gap: 14px; }
+.brand-lg .brand-logo { width: 64px; }
+.brand-lg .wordmark { font-size: 46px; }
+/* Pass-through on desktop so .nav/.logout stay direct flex children of the
+   sidebar (logout keeps its margin-top:auto). On mobile it becomes the
+   collapsible dropdown overlay. */
+.sidebar-menu { display: contents; }
 .nav a {
   display: block; padding: 9px 12px; border-radius: 8px; color: var(--ink);
   text-decoration: none; font-size: 14px;
@@ -104,3 +118,77 @@ button:disabled { opacity: .5; cursor: default; }
 .spin { color: var(--muted); }
 .kvp { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--border); }
 .kvp:last-child { border-bottom:none; }
+
+/* ---------- Tablet: tighten the sidebar a touch ---------- */
+@media (max-width: 1024px) {
+  .sidebar { width: 188px; }
+  .main { padding: 28px 28px; }
+}
+
+/* ---------- Phone / small screens ---------- */
+@media (max-width: 768px) {
+  /* Stack the layout: nav becomes a collapsible top bar. */
+  .app { flex-direction: column; min-height: 100vh; }
+
+  /* Fixed-height sticky app-bar. The 56px height is exact (border-box) so the
+     page header below it can stick flush at top:56px. */
+  .sidebar {
+    width: 100%; height: 56px; display: block;
+    border-right: none; border-bottom: 1px solid var(--border);
+    padding: 0 16px;
+    position: sticky; top: 0; z-index: 40;
+  }
+  .sidebar-top { height: 56px; align-items: center; }
+  .brand { flex-direction: row; align-items: center; gap: 10px; margin: 0; }
+  .brand .brand-logo { width: 32px; }
+  .brand .wordmark { font-size: 23px; }
+  .brand .tagline { display: none; }
+  .nav-toggle { display: block; }
+
+  /* Nav + logout drop down as an overlay (absolute) so opening the menu never
+     shifts page content. */
+  .sidebar-menu { display: none; }
+  .sidebar.open .sidebar-menu {
+    display: block; position: absolute; top: 56px; left: 0; right: 0; z-index: 45;
+    background: var(--panel); border-bottom: 1px solid var(--border);
+    box-shadow: 0 10px 22px rgba(0,0,0,.10); padding: 8px 12px;
+  }
+  .nav a { padding: 12px 12px; font-size: 16px; }
+  .logout { margin-top: 8px; }
+  .logout button { width: 100%; }
+
+  /* Roomier main area, no negative-margin overflow. */
+  .main { padding: 20px 16px; max-width: 100%; }
+  h1 { font-size: 21px; }
+
+  /* Keep the page header sticky (matches desktop) so the Save button stays
+     reachable while scrolling. It sticks just below the 56px app-bar. */
+  .page-header {
+    top: 56px; z-index: 30;
+    margin: -20px -16px 6px; padding: 12px 16px;
+    flex-wrap: wrap; gap: 10px;
+  }
+
+  /* Form rows stack vertically; ignore inline maxWidth caps on phones. */
+  .row { gap: 10px; }
+  .row > * { flex-basis: 100%; min-width: 0; max-width: none !important; }
+
+  /* List rows: let the actions wrap below the label instead of crushing it. */
+  .list-item { flex-wrap: wrap; }
+  .list-item .grow { flex-basis: 100%; }
+
+  /* Touch-friendly tap targets. */
+  button { padding: 11px 16px; }
+  button.small { padding: 8px 12px; font-size: 13px; }
+
+  /* 16px inputs prevent iOS from auto-zooming on focus. */
+  input, select, textarea { font-size: 16px; }
+
+  /* Softer poem card on small screens. */
+  .poem-card { padding: 22px 16px; }
+  .poem-text { font-size: 19px; }
+
+  /* Login card fits the viewport. */
+  .login-card { width: 100%; max-width: 360px; }
+  .login-wrap { padding: 20px; }
+}

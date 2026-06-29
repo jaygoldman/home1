@@ -24,8 +24,11 @@ export default function Login({ onLogin, needsSetup }) {
   return (
     <div className="login-wrap">
       <form className="panel login-card" onSubmit={submit}>
-        <div className="brand" style={{ marginBottom: 14 }}>
-          <img className="brand-logo" src="/home1-logo.svg" alt="Home/1" style={{ width: 210 }} />
+        <div className="brand brand-lg" style={{ marginBottom: 14 }}>
+          <div className="brand-mark">
+            <img className="brand-logo" src="/home1-icon.svg" alt="" />
+            <span className="wordmark">Home/1</span>
+          </div>
         </div>
         <p className="sub">Sign in to configure your clock.</p>
         {needsSetup && (
