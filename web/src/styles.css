@@ -39,6 +39,18 @@ a { color: var(--accent); }
 
 .main { flex: 1; padding: 30px 36px; max-width: 940px; }
 h1 { font-size: 23px; margin: 0 0 4px; letter-spacing: -.01em; }
+
+/* Sticky page header with a right-aligned action (e.g. Save settings). */
+.page-header {
+  position: sticky; top: 0; z-index: 20;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  background: var(--bg);
+  margin: -30px -36px 6px; padding: 16px 36px;
+  border-bottom: 1px solid var(--border);
+}
+.page-header h1 { margin: 0; }
+.page-header .actions { display: flex; align-items: center; gap: 12px; }
+.page-header .actions .ok, .page-header .actions .error { margin: 0; font-size: 13px; }
 .sub { color: var(--muted); margin: 0 0 22px; }
 h2 { font-size: 15px; margin: 26px 0 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 

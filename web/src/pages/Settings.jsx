@@ -60,10 +60,15 @@ export default function Settings() {
 
   return (
     <div>
-      <h1>Settings</h1>
+      <div className="page-header">
+        <h1>Settings</h1>
+        <div className="actions">
+          {err && <span className="error">{err}</span>}
+          {msg && <span className="ok">{msg}</span>}
+          <button onClick={save}>Save settings</button>
+        </div>
+      </div>
       <p className="sub">Tune how the clock looks, sounds, and what it knows about right now.</p>
-      {err && <p className="error">{err}</p>}
-      {msg && <p className="ok">{msg}</p>}
 
       <h2>Connect your Poem/1</h2>
       <div className="panel">
@@ -203,8 +208,6 @@ export default function Settings() {
           </div>
         )}
       </div>
-
-      <div style={{ margin: '8px 0 24px' }}><button onClick={save}>Save settings</button></div>
 
       <h2>Change password</h2>
       <div className="panel">
