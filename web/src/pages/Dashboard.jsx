@@ -22,11 +22,11 @@ export default function Dashboard() {
     } catch (e) { setErr(e.message); }
   }
 
-  async function loadPreview() {
+  async function loadPreview(force = false) {
     setBusy(true);
     setErr('');
     try {
-      setPreview(await api.get('/preview'));
+      setPreview(await api.get('/preview' + (force ? '?force=1' : '')));
     } catch (e) { setErr(e.message); }
     finally { setBusy(false); }
   }
@@ -46,22 +46,28 @@ export default function Dashboard() {
 
       <div className="poem-card">
         {preview ? (
-          <>
-            <div className="poem-text">{preview.text?.replace(/ \/ /g, '\n')}</div>
-            <div className="chips" style={{ justifyContent: 'center' }}>
-              <span className="tag">{preview.time24}</span>
-              <span className="tag">{preview.source}</span>
-              {preview.model && <span className="tag">{preview.model}</span>}
-              {preview.weather && (
-                <span className="tag">{preview.weather.condition} {preview.weather.tempNow}{preview.weather.unit}</span>
-              )}
+          preview.screensaver ? (
+            <div className="spin" style={{ padding: '16px 0' }}>
+              🌙 Quiet hours — the screen is blank. No poems are being generated.
             </div>
-          </>
+          ) : (
+            <>
+              <div className="poem-text">{preview.text?.replace(/ \/ /g, '\n')}</div>
+              <div className="chips" style={{ justifyContent: 'center' }}>
+                <span className="tag">{preview.time24}</span>
+                <span className="tag">{preview.source}</span>
+                {preview.model && <span className="tag">{preview.model}</span>}
+                {preview.weather && (
+                  <span className="tag">{preview.weather.condition} {preview.weather.tempNow}{preview.weather.unit}</span>
+                )}
+              </div>
+            </>
+          )
         ) : (
           <div className="spin">Composing…</div>
         )}
         <div className="poem-meta">
-          <button className="secondary small" onClick={loadPreview} disabled={busy}>
+          <button className="secondary small" onClick={() => loadPreview(true)} disabled={busy}>
             {busy ? 'Composing…' : 'Compose a fresh one'}
           </button>
         </div>

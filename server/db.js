@@ -49,8 +49,9 @@ CREATE TABLE IF NOT EXISTS settings (
   api_key               TEXT DEFAULT '',
   api_base_url          TEXT DEFAULT '',
   device_hostname       TEXT DEFAULT '',                     -- override shown to enter on the device
-  quiet_start           TEXT NOT NULL DEFAULT '',          -- HH:MM local, blank = none
-  quiet_end             TEXT NOT NULL DEFAULT '',
+  quiet_enabled         INTEGER NOT NULL DEFAULT 0,
+  quiet_start           TEXT NOT NULL DEFAULT '00:00',     -- HH:MM local
+  quiet_end             TEXT NOT NULL DEFAULT '07:00',
   bearer_token          TEXT NOT NULL DEFAULT '${DEFAULT_BEARER}',
   site_name             TEXT NOT NULL DEFAULT 'Home/1',
   weather_enabled       INTEGER NOT NULL DEFAULT 1,
@@ -111,13 +112,19 @@ function ensureColumn(table, column, ddl) {
   const cols = db.prepare(`PRAGMA table_info(${table})`).all();
   if (!cols.some((c) => c.name === column)) {
     db.exec(`ALTER TABLE ${table} ADD COLUMN ${ddl}`);
+    return true; // newly added
   }
+  return false;
 }
 ensureColumn('settings', 'poem_rhyme', 'poem_rhyme INTEGER NOT NULL DEFAULT 1');
 ensureColumn('settings', 'provider', "provider TEXT NOT NULL DEFAULT 'claude_cli'");
 ensureColumn('settings', 'api_key', "api_key TEXT DEFAULT ''");
 ensureColumn('settings', 'api_base_url', "api_base_url TEXT DEFAULT ''");
 ensureColumn('settings', 'device_hostname', "device_hostname TEXT DEFAULT ''");
+// Quiet-hours enable flag; backfill "on" for installs that already had a window.
+if (ensureColumn('settings', 'quiet_enabled', "quiet_enabled INTEGER NOT NULL DEFAULT 0")) {
+  db.prepare(`UPDATE settings SET quiet_enabled = 1 WHERE quiet_start <> '' AND quiet_end <> ''`).run();
+}
 
 // Ensure the singleton settings row exists.
 db.prepare(`INSERT OR IGNORE INTO settings (id) VALUES (1)`).run();
@@ -132,7 +139,7 @@ export function updateSettings(patch) {
   const current = getSettings();
   const allowed = [
     'tz', 'default_font', 'model', 'poem_tone', 'poem_rhyme', 'provider', 'api_key',
-    'api_base_url', 'device_hostname', 'quiet_start', 'quiet_end',
+    'api_base_url', 'device_hostname', 'quiet_enabled', 'quiet_start', 'quiet_end',
     'bearer_token', 'site_name', 'weather_enabled', 'weather_units',
     'weather_lat', 'weather_lon', 'weather_place', 'news_enabled',
     'news_good_only', 'news_interval_minutes', 'news_topics',

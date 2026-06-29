@@ -2,7 +2,7 @@
 import express from 'express';
 import { db, getSettings, updateSettings, bumpContextVersion } from '../db.js';
 import { verifyUser, requireAuth, userCount, setPassword } from '../auth.js';
-import { getPoemForTime, localTime24, getCachedPoem } from '../poem/scheduler.js';
+import { getPoemForTime, localTime24, getCachedPoem, isScreensaver } from '../poem/scheduler.js';
 import { refreshWeather, getCachedWeather } from '../poem/weather.js';
 import { refreshNews, currentEvents } from '../poem/news.js';
 import { buildContextBlock } from '../poem/engine.js';
@@ -167,6 +167,15 @@ adminRouter.get('/preview', async (req, res) => {
   const t = (req.query.time24 && /^\d{1,2}:\d{2}$/.test(req.query.time24))
     ? req.query.time24
     : localTime24();
+  // During quiet hours the device is blank, so don't generate (burn tokens)
+  // just because the dashboard is open. The "Compose a fresh one" button passes
+  // ?force=1 to override.
+  if (isScreensaver(t) && req.query.force !== '1') {
+    return res.json({
+      time24: t, text: '', source: 'screensaver', screensaver: true,
+      weather: getCachedWeather(), contextBlock: buildContextBlock(t).block,
+    });
+  }
   try {
     const poem = await getPoemForTime(t);
     res.json({ ...poem, weather: getCachedWeather(), contextBlock: buildContextBlock(t).block });

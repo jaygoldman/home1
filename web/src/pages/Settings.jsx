@@ -73,8 +73,9 @@ export default function Settings() {
       <h2>Connect your Poem/1</h2>
       <div className="panel">
         <p className="muted" style={{ marginTop: 0, fontSize: 13 }}>
-          On the device: hold the top button while plugging in power until the “Connect to me” screen shows. Join its
-          temporary <code>Poem-XXXX</code> Wi-Fi from your phone, open the captive page, and in <b>Server hostname</b> enter:
+          Unplug the Poem/1, then <b>hold the top button while plugging it back in</b> until the “Connect to me” screen
+          shows a QR code and a temporary <code>Poem-XXXX</code> Wi-Fi. Join that Wi-Fi from your phone, open the captive
+          page, go to <b>Advanced</b>, and set <b>Server hostname</b> to:
         </p>
         {conn && (
           <>
@@ -109,18 +110,34 @@ export default function Settings() {
           <div><label>Site name</label><input value={s.site_name} onChange={set('site_name')} /></div>
           <div><label>Timezone (IANA)</label><input value={s.tz} onChange={set('tz')} placeholder="America/Toronto" /></div>
         </div>
-        <div className="row">
+        <label>Preferred font</label>
+        <select value={s.default_font} onChange={set('default_font')} style={{ maxWidth: 200 }}>
+          <option value="INTER">INTER</option>
+          <option value="PLAYFAIR">PLAYFAIR</option>
+        </select>
+      </div>
+
+      <h2>Quiet hours</h2>
+      <div className="panel">
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <input type="checkbox" style={{ width: 'auto' }} checked={!!s.quiet_enabled} onChange={set('quiet_enabled')} />
+          Enable quiet hours (blank the screen overnight, no poems generated)
+        </label>
+        <div className="row" style={{ maxWidth: 420, opacity: s.quiet_enabled ? 1 : 0.5 }}>
           <div>
-            <label>Preferred font</label>
-            <select value={s.default_font} onChange={set('default_font')}>
-              <option value="INTER">INTER</option>
-              <option value="PLAYFAIR">PLAYFAIR</option>
-            </select>
+            <label>Start (HH:MM)</label>
+            <input value={s.quiet_start} onChange={set('quiet_start')} placeholder="00:00" disabled={!s.quiet_enabled} />
           </div>
-          <div><label>Quiet hours start (HH:MM)</label><input value={s.quiet_start} onChange={set('quiet_start')} placeholder="22:00" /></div>
-          <div><label>Quiet hours end (HH:MM)</label><input value={s.quiet_end} onChange={set('quiet_end')} placeholder="07:00" /></div>
+          <div>
+            <label>End (HH:MM)</label>
+            <input value={s.quiet_end} onChange={set('quiet_end')} placeholder="07:00" disabled={!s.quiet_enabled} />
+          </div>
         </div>
-        <p className="muted" style={{ fontSize: 12 }}>During quiet hours the device shows a blank screensaver until touched.</p>
+        <p className="muted" style={{ fontSize: 12 }}>
+          {s.quiet_enabled
+            ? 'During this window the device shows a blank screen and the server skips poem generation (saving tokens).'
+            : 'Off — the clock shows a fresh poem every minute, around the clock.'}
+        </p>
       </div>
 
       <h2>Poem generation</h2>

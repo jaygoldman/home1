@@ -28,6 +28,7 @@ function prune() {
 // HH:MM in [start, end) with wrap-around midnight support.
 function inQuietHours(time24) {
   const s = getSettings();
+  if (!s.quiet_enabled) return false;
   const start = (s.quiet_start || '').trim();
   const end = (s.quiet_end || '').trim();
   if (!start || !end) return false;

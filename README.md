@@ -84,25 +84,31 @@ If you expose the server with **Tailscale Funnel**, run it in the background so 
 
 ## Pointing your Poem/1 at the server
 
-The device builds an `https://<server>/api/v1/clock` URL, so it needs to reach this machine over a trusted connection. Two common setups:
+The Poem/1 fetches poems over **HTTPS**, so Home/1 serves a self-signed certificate on port **8444** (the device accepts it — no domain or trusted cert needed on the same LAN). To repoint your device:
 
-1. **Same LAN, direct** — if your device's Wi-Fi config accepts an IP/port (or `http://`), point it at this machine's LAN address (e.g. `http://192.168.1.x:8080`).
-2. **Trusted HTTPS via Tailscale Funnel** — if the device requires real TLS, expose the local port publicly with a valid cert:
-   ```bash
-   tailscale funnel 8080
-   ```
-   then set the device's server to your `https://<machine>.<tailnet>.ts.net` hostname. The device only needs internet access — it does **not** need to be on your tailnet.
+1. **Unplug** the Poem/1.
+2. **Hold the top button and plug it back in** — keep holding until a **"Connect to me"** screen appears showing a **QR code** and a temporary Wi-Fi name (e.g. `Poem-XXXX`).
+3. From your phone, **join that temporary Wi-Fi** (scan the QR or type the shown credentials). A captive setup page opens automatically.
+4. Open the **Advanced** page and set the **Server hostname** to your Home/1 machine's LAN address + HTTPS port, e.g. **`192.168.1.177:8444`**, and **Save**.
+   The exact value (with a copy button) is shown in the web app under **Settings → Connect your Poem/1**.
+5. Go **back** and **join your normal home Wi-Fi** — the network where the Home/1 server is running. Save; the device reboots and starts pulling poems.
+
+Notes:
+- The device must be on the **same network/subnet** as the Home/1 machine.
+- Home/1 also serves plain HTTP on **8080** (web app + simulator); the device uses the **8444** HTTPS port.
+- The clock sends its own per-device bearer token (not the docs' `poem.dummyKey`) and posts JSON without a `Content-Type` header — Home/1 handles both automatically.
+- If your firmware **ignores the port** (connects on 443) or **requires a publicly-trusted cert**, serve on 443 or front it with a real domain + Caddy/Let's Encrypt or a tunnel (Cloudflare Tunnel / Tailscale Funnel), and put that hostname in the field.
 
 You can verify the device endpoints without hardware:
 
 ```bash
-# health check (no auth) — registers the device
-curl -X POST localhost:8080/api/v1/clock/status \
-  -H 'Content-Type: application/json' -d '{"screenId":"TEST123"}'
+# health check (no auth) — registers a device
+curl -k -X POST https://localhost:8444/api/v1/clock/status \
+  -d '{"screenId":"TEST123"}'
 
-# compose a poem for a given local time (bearer token from Settings)
-curl -X POST localhost:8080/api/v1/clock/compose \
-  -H 'Authorization: Bearer poem.dummyKey' -H 'Content-Type: application/json' \
+# compose a poem for a given local time (any Bearer token is accepted)
+curl -k -X POST https://localhost:8444/api/v1/clock/compose \
+  -H 'Authorization: Bearer test' \
   -d '{"screenId":"TEST123","time24":"14:07"}'
 ```
 
