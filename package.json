@@ -1,0 +1,26 @@
+{
+  "name": "home1",
+  "version": "1.0.0",
+  "description": "Home/1 — a self-hosted, personalized server for the poem.town Poem/1 clock",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "setup": "node server/setup.js",
+    "build:web": "cd web && npm install && npm run build",
+    "fetch:shelf": "curl -fsSL https://poem.town/poem-shelf-blank-sm.jpg -o web/public/poem-shelf.jpg && echo 'saved web/public/poem-shelf.jpg'",
+    "engine:test": "node server/poem/engine.js --selftest"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^11.8.1",
+    "connect-sqlite3": "^0.9.15",
+    "express": "^4.21.2",
+    "express-session": "^1.18.1",
+    "selfsigned": "^2.4.1"
+  }
+}
