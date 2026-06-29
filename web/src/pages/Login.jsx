@@ -26,7 +26,7 @@ export default function Login({ onLogin, needsSetup }) {
       <form className="panel login-card" onSubmit={submit}>
         <div className="brand brand-lg" style={{ marginBottom: 14 }}>
           <div className="brand-mark">
-            <img className="brand-logo" src="/home1-icon.svg" alt="" />
+            <img className="brand-logo" src="/home1-logo.svg" alt="" />
             <span className="wordmark">Home/1</span>
           </div>
         </div>

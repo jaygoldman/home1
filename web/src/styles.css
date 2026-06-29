@@ -30,13 +30,15 @@ a { color: var(--accent); }
 .nav-toggle:hover { filter: none; background: var(--panel-2); border-radius: 8px; }
 .brand { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin: 2px 8px 22px; }
 .brand .brand-mark { display: flex; align-items: center; gap: 9px; }
-.brand .brand-logo { width: 40px; height: auto; display: block; }
+/* The mark is the wide Poem/1 device shape (~2.2:1), so size it by height to
+   line up with the wordmark's cap height. */
+.brand .brand-logo { height: 30px; width: auto; display: block; }
 /* Wordmark styled to match poem.town: Inter, medium weight, gentle tracking. */
-.brand .wordmark { font-size: 28px; font-weight: 500; letter-spacing: .025em; color: var(--ink); line-height: 1; }
+.brand .wordmark { font-size: 26px; font-weight: 500; letter-spacing: .025em; color: var(--ink); line-height: 1; }
 .brand .tagline { font-size: 11px; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; margin-left: 3px; }
 /* Larger lockup for the login screen. */
 .brand-lg .brand-mark { gap: 14px; }
-.brand-lg .brand-logo { width: 64px; }
+.brand-lg .brand-logo { height: 60px; }
 .brand-lg .wordmark { font-size: 46px; }
 /* Pass-through on desktop so .nav/.logout stay direct flex children of the
    sidebar (logout keeps its margin-top:auto). On mobile it becomes the
@@ -123,6 +125,10 @@ button:disabled { opacity: .5; cursor: default; }
 @media (max-width: 1024px) {
   .sidebar { width: 188px; }
   .main { padding: 28px 28px; }
+  /* Narrower sidebar: shrink the brand lockup so it doesn't wrap. */
+  .brand .brand-mark { gap: 7px; }
+  .brand .brand-logo { height: 26px; }
+  .brand .wordmark { font-size: 22px; }
 }
 
 /* ---------- Phone / small screens ---------- */
@@ -140,8 +146,9 @@ button:disabled { opacity: .5; cursor: default; }
   }
   .sidebar-top { height: 56px; align-items: center; }
   .brand { flex-direction: row; align-items: center; gap: 10px; margin: 0; }
-  .brand .brand-logo { width: 32px; }
-  .brand .wordmark { font-size: 23px; }
+  .brand .brand-mark { gap: 9px; }
+  .brand .brand-logo { height: 32px; }
+  .brand .wordmark { font-size: 24px; }
   .brand .tagline { display: none; }
   .nav-toggle { display: block; }
 

@@ -1,4 +1,7 @@
-# Home/1
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/home1-lockup-dark.png">
+  <img src="docs/home1-lockup.png" alt="Home/1" width="242">
+</picture>
 
 A self-hosted, **personalized** server for the [poem.town](https://poem.town) **Poem/1** clock.
 
