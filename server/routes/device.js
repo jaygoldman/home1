@@ -3,6 +3,7 @@ import express from 'express';
 import { db, getSettings } from '../db.js';
 import { getPoemForTime, isScreensaver } from '../poem/scheduler.js';
 import { temporalContext } from '../poem/temporal.js';
+import { fallbackPoem } from '../poem/engine.js';
 
 export const deviceRouter = express.Router();
 
@@ -83,12 +84,19 @@ deviceRouter.post('/compose', async (req, res) => {
 
   touchDevice(screenId, req.body.buildId);
 
+  // During quiet hours the screen is blank, so don't spend tokens generating a
+  // poem nobody sees — return a cheap template poem with screensaver on.
+  const screensaver = isScreensaver(t);
   let poem;
-  try {
-    poem = await getPoemForTime(t, { screenId });
-  } catch (e) {
-    console.error('[compose] failed:', e.message);
-    return res.status(500).json({ error: 'poem generation failed' });
+  if (screensaver) {
+    poem = { poemId: String(Date.now() % 1000000000), text: fallbackPoem(t) };
+  } else {
+    try {
+      poem = await getPoemForTime(t, { screenId });
+    } catch (e) {
+      console.error('[compose] failed:', e.message);
+      return res.status(500).json({ error: 'poem generation failed' });
+    }
   }
 
   // Attach an active, unseen note if present.
@@ -113,7 +121,7 @@ deviceRouter.post('/compose', async (req, res) => {
         }
       : undefined,
     preferredFont: s.default_font,
-    screensaver: isScreensaver(t),
+    screensaver,
     debug: {},
   });
 });

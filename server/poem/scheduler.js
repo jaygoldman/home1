@@ -71,13 +71,15 @@ export function getCachedPoem() {
   return last;
 }
 
-// Warm the current minute and pre-generate the next one.
+// Warm the current minute and pre-generate the next one — but skip any minute
+// that falls in quiet hours (the screen is blank then, so generating would just
+// burn tokens). The wake-up minute is still pre-generated because it isn't quiet.
 async function tick() {
   try {
     const cur = localTime24();
-    if (!cache.has(cur)) await getPoemForTime(cur);
+    if (!isScreensaver(cur) && !cache.has(cur)) await getPoemForTime(cur);
     const nxt = nextTime24();
-    if (!cache.has(nxt)) await getPoemForTime(nxt);
+    if (!isScreensaver(nxt) && !cache.has(nxt)) await getPoemForTime(nxt);
   } catch (e) {
     console.error('[scheduler] tick error:', e.message);
   }
