@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Home/1 — a self-hosted, personalized server for the poem.town Poem/1 clock",
   "type": "module",
+  "license": "MIT",
   "private": true,
   "scripts": {
     "start": "node server/index.js",

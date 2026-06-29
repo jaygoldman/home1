@@ -154,4 +154,10 @@ web/public/sim.html   shelf simulator
 
 ---
 
+## License
+
+Home/1 is released under the [MIT License](LICENSE) — © 2026 Jay Goldman. You're free to use, modify, fork, and self-host it.
+
+The MIT license covers **this repository's code only**. It does **not** grant any rights to poem.town's trademarks, the **Poem/1** name, or their hosted assets (e.g. the shelf product render fetched by `npm run fetch:shelf`, which is intentionally not committed here). Those remain the property of poem.town.
+
 Not affiliated with poem.town. Poem/1 is their lovely product; this is a community server for owners who want to make it theirs.
