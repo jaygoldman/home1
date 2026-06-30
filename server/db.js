@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS settings (
   model                 TEXT NOT NULL DEFAULT 'claude-sonnet-4-6',
   poem_tone             TEXT NOT NULL DEFAULT 'warm, concrete, a little playful',
   poem_rhyme            INTEGER NOT NULL DEFAULT 1,
+  poem_time_style       TEXT NOT NULL DEFAULT 'rhyme',       -- start | rhyme (where the clock time sits)
   provider              TEXT NOT NULL DEFAULT 'claude_cli',  -- claude_cli | anthropic | openai
   api_key               TEXT DEFAULT '',
   api_base_url          TEXT DEFAULT '',
@@ -117,6 +118,7 @@ function ensureColumn(table, column, ddl) {
   return false;
 }
 ensureColumn('settings', 'poem_rhyme', 'poem_rhyme INTEGER NOT NULL DEFAULT 1');
+ensureColumn('settings', 'poem_time_style', "poem_time_style TEXT NOT NULL DEFAULT 'rhyme'");
 ensureColumn('settings', 'provider', "provider TEXT NOT NULL DEFAULT 'claude_cli'");
 ensureColumn('settings', 'api_key', "api_key TEXT DEFAULT ''");
 ensureColumn('settings', 'api_base_url', "api_base_url TEXT DEFAULT ''");
@@ -138,7 +140,7 @@ export function getSettings() {
 export function updateSettings(patch) {
   const current = getSettings();
   const allowed = [
-    'tz', 'default_font', 'model', 'poem_tone', 'poem_rhyme', 'provider', 'api_key',
+    'tz', 'default_font', 'model', 'poem_tone', 'poem_rhyme', 'poem_time_style', 'provider', 'api_key',
     'api_base_url', 'device_hostname', 'quiet_enabled', 'quiet_start', 'quiet_end',
     'bearer_token', 'site_name', 'weather_enabled', 'weather_units',
     'weather_lat', 'weather_lon', 'weather_place', 'news_enabled',

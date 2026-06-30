@@ -177,6 +177,16 @@ export default function Settings() {
         <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12 }}>
           <input type="checkbox" style={{ width: 'auto' }} checked={!!s.poem_rhyme} onChange={set('poem_rhyme')} /> Poems should rhyme
         </label>
+        <label style={{ marginTop: 12 }}>Where the clock time goes</label>
+        <select value={s.poem_time_style || 'rhyme'} onChange={set('poem_time_style')} style={{ maxWidth: 320 }}>
+          <option value="rhyme">Woven into the rhyme (…surprise / it’s 9:45)</option>
+          <option value="start">At the start (At 9:45, …)</option>
+        </select>
+        <p className="muted" style={{ fontSize: 12 }}>
+          {s.poem_time_style === 'start'
+            ? 'Each poem opens with the time, e.g. “At 9:45, …”.'
+            : 'The time lands as a rhyme — the poet hears 9:45 as “nine forty-five” and rhymes it (e.g. with “alive”). Needs rhyming on to take effect.'}
+        </p>
         <label style={{ marginTop: 12 }}>Device bearer token</label>
         <input value={s.bearer_token} onChange={set('bearer_token')} />
         <p className="muted" style={{ fontSize: 12 }}>The token must match what the device sends (default <code>poem.dummyKey</code>).</p>
