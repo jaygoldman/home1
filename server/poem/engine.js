@@ -237,7 +237,12 @@ function buildUserPrompt(focus, time24, { retry = false, rhyme = false, name = '
     const multi = sp.readings.length > 1
       ? ` It can be heard as "${sp.spoken}" or simply "${sp.readings[1].word}", so`
       : ` Spoken aloud it sounds like "${sp.spoken}", so`;
-    timeRule = `End one line on the time, written as these exact digits ${digits}, placed as the line's final token.${multi} make the OTHER line's last word rhyme cleanly with ${choices}. The digits must be the natural grammatical end of their line — woven in as a phrase like "at ${digits}" or "by ${digits}", NOT tacked on after a comma or dash. The poem has exactly ONE rhyming pair: the time is one half, its partner line's last word is the other. Do NOT give any line a separate end-rhyme of its own (no third rhyming word), and do not let a complete rhyming line then have the time appended.`;
+    // Vary which line carries the time so the poem doesn't always close on it —
+    // sometimes the time OPENS the couplet and the second line answers the rhyme.
+    const posRule = Math.random() < 0.5
+      ? ` Put the time on the FIRST line — end the opening line with ${digits}, then let the second line land the rhyming word. Do NOT end the poem on the time this round.`
+      : ` Put the time on the LAST line — end the poem with ${digits}, with the line before setting up the rhyme.`;
+    timeRule = `End one line on the time, written as these exact digits ${digits}, placed as that line's final token.${multi} make the OTHER line's last word rhyme cleanly with ${choices}.${posRule} The digits must be the natural grammatical end of their line — woven in as a phrase like "at ${digits}" or "by ${digits}", NOT tacked on after a comma or dash. The poem has exactly ONE rhyming pair: the time is one half, its partner line's last word is the other. Do NOT give any line a separate end-rhyme of its own (no third rhyming word), and do not let a complete rhyming line then have the time appended.`;
   } else if (timeStyle === 'start') {
     timeRule = `Begin the poem with the time, as these exact digits ${digits} (e.g. "At ${digits}, …"). Do not end any line on a number.`;
   } else {
