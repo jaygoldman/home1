@@ -155,6 +155,8 @@ web/                  React + Vite config app  (built to web/dist)
 web/public/sim.html   shelf simulator
 ```
 
+Working on the code? See **[CLAUDE.md](CLAUDE.md)** for the engine invariants, device-API quirks, and how the server runs in production.
+
 ---
 
 ## License
