@@ -29,6 +29,7 @@ server/
     temporal.js     season/holiday/part-of-day/birthdays (deterministic, no network)
     weather.js      Open-Meteo geocode + current conditions (free, keyless)
     news.js         good-news web-search enrichment (Claude CLI only)
+    vocab.js         per-person "word bank": derive alternate words/imagery on save (any provider)
 web/                React + Vite SPA (pages/ Dashboard, People, Household, Notes, Settings); built to web/dist
 web/public/sim.html browser shelf simulator
 data/               SQLite DBs, session store, cert, logs — gitignored, created at runtime
@@ -70,16 +71,19 @@ The real Poem/1 firmware deviates from the published spec in ways `index.js` and
 `engine.js` is where the product lives. The poem must satisfy, every minute:
 
 - **One subject per minute.** `pickFocus()` weighted-picks a *single* person/pet/team/city/tradition/weather/season/news item. Never list or cram multiple subjects — that's the whole point of staying clock-small (~2 short lines).
+- **Holiday-gated traditions.** A `tradition` context item can carry an optional `holiday` tag (`context_items.holiday`, a code from `HOLIDAY_DEFS` in `temporal.js`). Tagged traditions enter `pickFocus()`'s pool *only* inside that holiday's date window (`holidayActive()`), so Christmas traditions don't surface in July; untagged traditions stay year-round. Windows are wrap-aware (New Year's straddles year-end) and movable feasts use generous approximations. The web app's Holiday drop-down is populated from `GET /api/admin/holidays`.
 - **Observer voice.** The clock writes *about* the household, never *to* or *as* a member. Rejected by validators: any second-person (`you`/`your`), and — when the focus is a person/pet — any third-person pronoun (`he/she/they/him/her/his/their`) or a missing name. A person poem must name the subject and use only the name. Relationship labels (son/mom/…) are context only; they are deliberately kept out of the poem hook (naming them produces "my son" / "Alex loves his mom" when Alex *is* the mom).
 - **The time must appear as digits** exactly as given (`mentionsTime`), never spelled out. When rhyming (`poem_rhyme`), a line must not *end* on the time/number (`rhymeShapeOk`).
 - Up to **3 attempts**, then a built-in **fallback verse** so the clock never goes blank. `normalizePoem()` cleans the raw output (strips fences/quotes, converts newlines to ` / ` separators, normalizes temperatures to `°`).
+
+**Anti-repetition (keeps minute-to-minute variety without extra tokens).** `engine.js` holds two in-memory rings (reset on restart, like the cache): `recentSubjects` soft-penalizes (×0.15, never hard-excludes) a subject `key` picked in the last ~5 minutes so the clock doesn't dwell on one person/the weather; `recentPoems` feeds the last ~3 poems to the poet as a "don't echo these" list. Each minute also picks one `pickFacet()` hook (a single comma-split trait, not the whole blob) and rotates an `ANGLES` poetic move. Separately, `vocab.js` derives a per-person **word bank** (`people.word_bank`, gated by `settings.vocab_enabled`) on save — `pickFocus()` passes it to the prompt as an optional palette. All four are additive to the invariants above, not replacements.
 
 When changing prompts or validators, run `npm run engine:test` to eyeball output before relying on it. Keep the system prompt, the validators, and the retry hint in sync — they encode the same rules three ways.
 
 ## How generation is wired
 
 - **Provider abstraction** (`provider.js`): `generate(prompt, opts)` dispatches on `settings.provider` — `claude_cli` (rides a Claude subscription via `claude -p`, no API key), `anthropic` (Messages API), or `openai` (any OpenAI-compatible `/chat/completions`, incl. OpenRouter/Ollama). **Web-search news enrichment is `claude_cli`-only** (`providerSupportsWebSearch()`); guard new web-search features behind it.
-- **`claude.js` serializes CLI calls per *lane*** (single-flight) so a slow lane (news web search, ~120s) never blocks the latency-sensitive `poem` lane. Reuse lanes; don't spawn unbounded `claude` processes.
+- **`claude.js` serializes CLI calls per *lane*** (single-flight) so a slow lane (news web search, ~120s) never blocks the latency-sensitive `poem` lane. Reuse lanes; don't spawn unbounded `claude` processes. (Word-bank derivation rides its own `vocab` lane, fire-and-forget from the people save routes.)
 - **The scheduler caches poems in memory only** (`scheduler.js`, a `Map`, max 6) — the `poems` DB table is a *history log* read by the admin page, never re-served. A restart clears the cache; old rows are never replayed. Each tick pre-generates the *upcoming* minute so the device's top-of-minute poll hits a warm cache. During **quiet hours** it skips generation and `/compose` returns an empty screensaver poem (don't burn tokens on a dark screen).
 
 ## Conventions

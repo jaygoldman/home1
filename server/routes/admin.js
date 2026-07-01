@@ -5,7 +5,9 @@ import { verifyUser, requireAuth, userCount, setPassword } from '../auth.js';
 import { getPoemForTime, localTime24, getCachedPoem, isScreensaver } from '../poem/scheduler.js';
 import { refreshWeather, getCachedWeather } from '../poem/weather.js';
 import { refreshNews, currentEvents } from '../poem/news.js';
+import { deriveVocab } from '../poem/vocab.js';
 import { buildContextBlock } from '../poem/engine.js';
+import { HOLIDAY_DEFS } from '../poem/temporal.js';
 import { lanIPv4s } from '../net.js';
 import { HTTPS_PORT, PORT } from '../config.js';
 
@@ -60,6 +62,8 @@ adminRouter.post('/people', (req, res) => {
       active: p.active === false ? 0 : 1,
     });
   bumpContextVersion();
+  // Derive the word bank in the background so the save returns instantly.
+  deriveVocab(info.lastInsertRowid).catch(() => {});
   res.json(db.prepare(`SELECT * FROM people WHERE id = ?`).get(info.lastInsertRowid));
 });
 adminRouter.put('/people/:id', (req, res) => {
@@ -79,7 +83,16 @@ adminRouter.put('/people/:id', (req, res) => {
     active: p.active === false ? 0 : 1,
   });
   bumpContextVersion();
+  // Re-derive in the background; deriveVocab no-ops if the source text is unchanged.
+  deriveVocab(Number(req.params.id)).catch(() => {});
   res.json(db.prepare(`SELECT * FROM people WHERE id = ?`).get(Number(req.params.id)));
+});
+// Force-regenerate a person's word bank (the "Regenerate" button in the web app).
+adminRouter.post('/people/:id/vocab', async (req, res) => {
+  await deriveVocab(Number(req.params.id), { force: true });
+  const row = db.prepare(`SELECT * FROM people WHERE id = ?`).get(Number(req.params.id));
+  if (!row) return res.status(404).json({ error: 'not found' });
+  res.json(row);
 });
 adminRouter.delete('/people/:id', (req, res) => {
   db.prepare(`DELETE FROM people WHERE id = ?`).run(Number(req.params.id));
@@ -87,23 +100,31 @@ adminRouter.delete('/people/:id', (req, res) => {
   res.json({ ok: true });
 });
 
+// The holiday windows that can tag a tradition — drives the web app drop-down.
+adminRouter.get('/holidays', (req, res) => {
+  res.json(HOLIDAY_DEFS.map((h) => ({ code: h.code, name: h.name })));
+});
+
 // --- context items ---
+// `holiday` only applies to traditions; ignored for other categories.
 adminRouter.get('/context', (req, res) => {
   res.json(db.prepare(`SELECT * FROM context_items ORDER BY category, id`).all());
 });
 adminRouter.post('/context', (req, res) => {
   const c = req.body || {};
+  const holiday = c.category === 'tradition' ? (c.holiday || '') : '';
   const info = db
-    .prepare(`INSERT INTO context_items (category, label, value, active) VALUES (?, ?, ?, ?)`)
-    .run(c.category || 'fact', c.label || '', c.value || '', c.active === false ? 0 : 1);
+    .prepare(`INSERT INTO context_items (category, label, value, active, holiday) VALUES (?, ?, ?, ?, ?)`)
+    .run(c.category || 'fact', c.label || '', c.value || '', c.active === false ? 0 : 1, holiday);
   bumpContextVersion();
   res.json(db.prepare(`SELECT * FROM context_items WHERE id = ?`).get(info.lastInsertRowid));
 });
 adminRouter.put('/context/:id', (req, res) => {
   const c = req.body || {};
+  const holiday = c.category === 'tradition' ? (c.holiday || '') : '';
   db.prepare(
-    `UPDATE context_items SET category=?, label=?, value=?, active=? WHERE id=?`
-  ).run(c.category || 'fact', c.label || '', c.value || '', c.active === false ? 0 : 1, Number(req.params.id));
+    `UPDATE context_items SET category=?, label=?, value=?, active=?, holiday=? WHERE id=?`
+  ).run(c.category || 'fact', c.label || '', c.value || '', c.active === false ? 0 : 1, holiday, Number(req.params.id));
   bumpContextVersion();
   res.json(db.prepare(`SELECT * FROM context_items WHERE id = ?`).get(Number(req.params.id)));
 });

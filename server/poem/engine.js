@@ -1,7 +1,7 @@
 // Poem engine: assemble context -> prompt -> `claude -p` -> validated poem,
 // with a template fallback so the clock never goes blank.
 import { db, getSettings, contextVersion } from '../db.js';
-import { temporalContext } from './temporal.js';
+import { temporalContext, holidayActive } from './temporal.js';
 import { weatherLine } from './weather.js';
 import { generate } from './provider.js';
 
@@ -63,6 +63,40 @@ function weightedPick(pool) {
   return pool[pool.length - 1];
 }
 
+// --- anti-repetition memory (in-memory, resets on restart, like the cache) ---
+// Recently-used subject keys, so the clock doesn't dwell on the same person or
+// "the weather" minute after minute; and recent poem texts, fed to the poet as a
+// "don't echo these" list so phrasing varies even when a subject legitimately
+// recurs. Both are bounded rings.
+const RECENT_SUBJECTS_MAX = 5;
+const RECENT_POEMS_MAX = 3;
+const recentSubjects = [];
+const recentPoems = [];
+function pushRecent(arr, val, max) {
+  arr.push(val);
+  while (arr.length > max) arr.shift();
+}
+
+// Poetic "move" for the minute — rotates the shape so subjects don't always come
+// out the same way. Applies to every focus (people, weather, city, season…).
+const ANGLES = [
+  'a tiny action',
+  'a sensory close-up',
+  'a quiet scene',
+  'a small comparison',
+  'a single image',
+];
+
+// Split traits/interests/notes into individual hooks and pick ONE, so a poem
+// leans on a single concrete detail ("baking") instead of the whole comma blob
+// ("soccer, baking, sunbeams"). A field with no comma stays whole (its own hook).
+function pickFacet(p) {
+  const tokens = [p.traits, p.interests, p.notes]
+    .filter((x) => x && x.trim())
+    .flatMap((f) => f.split(',').map((t) => t.trim()).filter(Boolean));
+  return tokens.length ? randItem(tokens) : '';
+}
+
 // Pick ONE subject for this minute, so each poem stays small and focused
 // instead of cramming every person/team/fact into four lines.
 function pickFocus({ people, ctx, temporal, wx }) {
@@ -72,24 +106,39 @@ function pickFocus({ people, ctx, temporal, wx }) {
     // is deliberately left out of the hook: it's a role *within the family*, not
     // a relationship to the clock. Naming it confuses the poet — it produces
     // "my son" or, worse, "Alex loves his mom" when Alex IS the mom.
-    const details = [p.traits, p.interests, p.notes].filter((x) => x && x.trim());
-    const d = details.length ? randItem(details) : '';
+    const d = pickFacet(p); // one concrete detail, not the whole comma blob
     const kind = p.kind === 'pet' ? ' the pet' : '';
-    pool.push({ w: 3, desc: `${p.name}${kind}${d ? ` — ${d}` : ''}`, name: p.name });
+    pool.push({
+      w: 3,
+      desc: `${p.name}${kind}${d ? ` — ${d}` : ''}`,
+      name: p.name,
+      palette: p.word_bank || '', // fresh diction for this same subject
+      key: `person:${p.name}`,
+    });
   }
   for (const c of ctx) {
-    if (c.category === 'team') pool.push({ w: 1.2, desc: `the home team, ${c.value}` });
-    else if (c.category === 'city') pool.push({ w: 1.5, desc: `our city, ${c.value}` });
-    else if (c.category === 'tradition') pool.push({ w: 1, desc: c.value });
-    else pool.push({ w: 0.8, desc: c.label ? `${c.label}: ${c.value}` : c.value });
+    if (c.category === 'team') pool.push({ w: 1.2, desc: `the home team, ${c.value}`, key: `team:${c.value}` });
+    else if (c.category === 'city') pool.push({ w: 1.5, desc: `our city, ${c.value}`, key: `city:${c.value}` });
+    else if (c.category === 'tradition') {
+      // A tradition tagged with a holiday only enters the pool inside that
+      // holiday's window, so "Christmas baking" can't surface in July. Untagged
+      // traditions stay year-round (holidayActive returns true for an empty tag).
+      if (holidayActive(c.holiday, temporal.month, temporal.day)) {
+        pool.push({ w: 1, desc: c.value, key: `trad:${c.value}` });
+      }
+    }
+    else pool.push({ w: 0.8, desc: c.label ? `${c.label}: ${c.value}` : c.value, key: `ctx:${c.id}` });
   }
-  if (wx) pool.push({ w: 2.5, desc: `the weather right now (${wx})` });
-  pool.push({ w: 1.5, desc: `the quiet feel of this season (${temporal.season}, ${temporal.dayPart})` });
+  if (wx) pool.push({ w: 2.5, desc: `the weather right now (${wx})`, key: 'weather' });
+  pool.push({ w: 1.5, desc: `the quiet feel of this season (${temporal.season}, ${temporal.dayPart})`, key: 'season' });
   const ev = pickEvent();
-  if (ev) pool.push({ w: 1.2, desc: `a small happy thing in the air: ${ev.headline}` });
-  if (!pool.length) pool.push({ w: 1, desc: 'this quiet minute at home' });
+  if (ev) pool.push({ w: 1.2, desc: `a small happy thing in the air: ${ev.headline}`, key: `event:${ev.id}` });
+  if (!pool.length) pool.push({ w: 1, desc: 'this quiet minute at home', key: 'quiet' });
+  // Soft-penalize recently-used subjects so the clock doesn't dwell on one, but
+  // never hard-exclude — a small household must never end up with an empty pool.
+  for (const x of pool) if (recentSubjects.includes(x.key)) x.w *= 0.15;
   const pick = weightedPick(pool);
-  return { desc: pick.desc, name: pick.name || '' };
+  return { desc: pick.desc, name: pick.name || '', palette: pick.palette || '', key: pick.key };
 }
 
 function systemPrompt(tone, rhyme, timeStyle) {
@@ -223,7 +272,7 @@ function dayPhrase(time24) {
   return 'late at night';
 }
 
-function buildUserPrompt(focus, time24, { retry = false, rhyme = false, name = '', timeStyle = 'rhyme' } = {}) {
+function buildUserPrompt(focus, time24, { retry = false, rhyme = false, name = '', timeStyle = 'rhyme', palette = '', angle = '', avoid = [] } = {}) {
   const digits = displayTime(time24);
   const timeInRhyme = rhyme && timeStyle === 'rhyme';
   const sp = timeInRhyme ? spokenTime(time24) : null;
@@ -261,11 +310,26 @@ function buildUserPrompt(focus, time24, { retry = false, rhyme = false, name = '
     retryRule = `IMPORTANT: your last attempt didn't work${nameNote}. Do NOT address anyone as "you", and do not use sky imagery that contradicts the time of day.${rhymeNote} Keep the digits ${digits} verbatim and keep it to 2 short lines.`;
   }
 
+  // Optional palette: alternate words/imagery for THIS subject (see vocab.js),
+  // so the same person reads differently across minutes. Use sparingly — the
+  // one-subject/name-only rules still win.
+  const paletteRule = palette && name
+    ? `Optional word palette you may draw on for fresh imagery (do NOT list them, use at most one, only if it fits): ${palette}.`
+    : '';
+  const angleRule = angle ? `Angle for this poem: lean on ${angle}.` : '';
+  // Recent poems the poet should NOT echo — keeps phrasing from converging.
+  const avoidRule = avoid && avoid.length
+    ? `To stay fresh, do NOT reuse the images, phrasings, or opening words of these recent poems: ${avoid.map((a) => `"${a}"`).join(' ')}.`
+    : '';
+
   return [
     `Focus on ONLY this one thing: ${focus}.`,
     name ? `This poem is about ${name}. Refer to ${name} ONLY by name — use "${name}" (repeat it if needed) and do NOT use any pronoun ("he", "she", "they", "him", "her", "his", "their") for ${name}.` : '',
     `Right now it is ${dayPhrase(time24)} — ${digits} ${ampm(time24)}. The mood must match this time of day (never call evening or night "morning").`,
+    angleRule,
+    paletteRule,
     timeRule,
+    avoidRule,
     retryRule,
     'Write the short poem now.',
   ].filter(Boolean).join('\n');
@@ -446,7 +510,9 @@ function newPoemId() {
 // Generate (and persist) a poem for the given local time24.
 export async function composePoem(time24, { screenId = '' } = {}) {
   const s = getSettings();
-  const { desc: focus, name } = pickFocus(gather()); // ONE subject for this minute
+  const { desc: focus, name, palette, key } = pickFocus(gather()); // ONE subject for this minute
+  const angle = randItem(ANGLES);           // rotate the poetic move
+  const avoid = recentPoems.slice();        // "don't echo these" list
   let text = '';
   let source = 'fallback';
   let model = s.model;
@@ -457,7 +523,7 @@ export async function composePoem(time24, { screenId = '' } = {}) {
   const sp = timeInRhyme ? spokenTime(time24) : null;
   for (let attempt = 0; attempt < 3 && !text; attempt++) {
     try {
-      const raw = await generate(buildUserPrompt(focus, time24, { retry: attempt > 0, rhyme, name, timeStyle }), {
+      const raw = await generate(buildUserPrompt(focus, time24, { retry: attempt > 0, rhyme, name, timeStyle, palette, angle, avoid }), {
         system: systemPrompt(s.poem_tone, rhyme, timeStyle),
         timeoutMs: 45000,
         lane: 'poem',
@@ -484,6 +550,11 @@ export async function composePoem(time24, { screenId = '' } = {}) {
     text = fallbackPoem(time24);
     source = 'fallback';
     model = '';
+  } else {
+    // Remember what we just wrote so the next minutes vary subject and phrasing.
+    // Only on a real (non-fallback) poem: the fallback isn't about this subject.
+    pushRecent(recentSubjects, key, RECENT_SUBJECTS_MAX);
+    pushRecent(recentPoems, text, RECENT_POEMS_MAX);
   }
 
   const poemId = newPoemId();

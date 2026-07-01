@@ -26,7 +26,8 @@ function partOfDay(hour) {
   return 'night';
 }
 
-// A few fixed-date observances worth a nod (month-day strings).
+// A few fixed-date observances worth a nod ON THE DAY (month-day strings). This
+// drives the "it's Christmas" line in the poem context — the single-day marquee.
 const HOLIDAYS = {
   '01-01': "New Year's Day",
   '02-14': "Valentine's Day",
@@ -38,6 +39,54 @@ const HOLIDAYS = {
   '12-25': 'Christmas',
   '12-31': "New Year's Eve",
 };
+
+// Holiday "seasons" — the stretch of the year when a tradition TAGGED with this
+// holiday may surface. Distinct from the single-day nod above: a household's
+// Christmas traditions should show across December, not only on the 25th, but
+// must NOT show in July. `window` is [start, end] as MM-DD, inclusive and
+// wrap-aware (a window that crosses year-end, like New Year's, is fine). Movable
+// feasts (Easter, Hanukkah, Thanksgiving) use generous approximate windows —
+// good enough to gate a household clock, not a liturgical calendar. This list
+// also populates the Holiday drop-down in the web app (GET /api/admin/holidays).
+export const HOLIDAY_DEFS = [
+  { code: 'new_year',         name: "New Year's",            window: ['12-30', '01-02'] },
+  { code: 'valentines',       name: "Valentine's Day",       window: ['02-07', '02-14'] },
+  { code: 'st_patricks',      name: "St. Patrick's Day",     window: ['03-10', '03-17'] },
+  { code: 'easter',           name: 'Easter',                window: ['03-20', '04-25'] },
+  { code: 'mothers_day',      name: "Mother's Day",          window: ['05-06', '05-14'] }, // 2nd Sun of May
+  { code: 'fathers_day',      name: "Father's Day",          window: ['06-13', '06-21'] }, // 3rd Sun of June
+  { code: 'summer_solstice',  name: 'Summer Solstice',       window: ['06-19', '06-22'] },
+  { code: 'canada_day',       name: 'Canada Day',            window: ['06-25', '07-01'] },
+  { code: 'independence_day', name: 'Independence Day (US)', window: ['06-28', '07-04'] },
+  { code: 'grandparents_day', name: "Grandparents' Day",     window: ['09-05', '09-13'] }, // 2nd Sun of Sept
+  { code: 'halloween',        name: 'Halloween',             window: ['10-17', '10-31'] },
+  { code: 'thanksgiving_ca',  name: 'Thanksgiving (Canada)', window: ['10-04', '10-14'] },
+  { code: 'thanksgiving_us',  name: 'Thanksgiving (US)',     window: ['11-20', '11-28'] },
+  { code: 'winter_solstice',  name: 'Winter Solstice',       window: ['12-20', '12-23'] },
+  { code: 'hanukkah',         name: 'Hanukkah',              window: ['12-06', '12-26'] },
+  { code: 'christmas',        name: 'Christmas',             window: ['12-01', '12-26'] },
+];
+
+const mdNum = (md) => Number(md.slice(0, 2)) * 100 + Number(md.slice(3, 5));
+
+// Is MM-DD `md` inside [start, end] (inclusive)? Wrap-aware: when start > end the
+// window straddles year-end (e.g. Dec 30 -> Jan 2).
+function withinWindow(md, [start, end]) {
+  const v = mdNum(md), a = mdNum(start), b = mdNum(end);
+  return a <= b ? v >= a && v <= b : v >= a || v <= b;
+}
+
+// Should a tradition tagged with holiday `code` surface right now? Empty/unknown
+// codes fail OPEN — untagged traditions always show, and a tag whose holiday we
+// no longer define is shown rather than silently lost. A recognized tag only
+// shows inside its window.
+export function holidayActive(code, month, day) {
+  if (!code) return true;
+  const def = HOLIDAY_DEFS.find((h) => h.code === code);
+  if (!def) return true;
+  const md = `${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  return withinWindow(md, def.window);
+}
 
 // Parse the local wall-clock fields for a given IANA timezone.
 function localParts(date, tz) {
@@ -111,6 +160,8 @@ export function temporalContext(tz = 'America/Toronto', people = [], now = new D
     weekday,
     isWeekend,
     holiday: holiday || null,
+    month, // 1-12, exposed so the engine can gate holiday-tagged traditions
+    day,
     birthdays,
     time24: `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`,
   };

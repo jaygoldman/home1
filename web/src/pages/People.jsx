@@ -7,6 +7,7 @@ export default function People() {
   const [people, setPeople] = useState([]);
   const [editing, setEditing] = useState(null); // object or null
   const [err, setErr] = useState('');
+  const [regenId, setRegenId] = useState(null); // person whose word bank is regenerating
 
   async function load() {
     try { setPeople(await api.get('/people')); } catch (e) { setErr(e.message); }
@@ -26,6 +27,15 @@ export default function People() {
     if (!confirm('Remove this person?')) return;
     await api.del(`/people/${id}`);
     load();
+  }
+  // Force-regenerate the derived word bank (alternate words/imagery the poet can
+  // reach for, so the same person reads differently minute to minute).
+  async function regen(id) {
+    setErr('');
+    setRegenId(id);
+    try { await api.post(`/people/${id}/vocab`); load(); }
+    catch (e) { setErr(e.message); }
+    finally { setRegenId(null); }
   }
 
   const f = editing || {};
@@ -95,6 +105,24 @@ export default function People() {
               <div className="muted" style={{ fontSize: 13 }}>
                 {[p.relationship, p.traits, p.interests].filter(Boolean).join(' · ')}
               </div>
+              <details style={{ fontSize: 13, marginTop: 4 }}>
+                <summary className="muted" style={{ cursor: 'pointer' }}>
+                  Word palette {regenId === p.id ? '(regenerating…)' : ''}
+                </summary>
+                <div className="muted" style={{ marginTop: 4 }}>
+                  {p.word_bank
+                    ? p.word_bank
+                    : 'Derived automatically from traits/interests/notes when you save. None yet.'}
+                </div>
+                <button
+                  className="small secondary"
+                  style={{ marginTop: 6 }}
+                  disabled={regenId === p.id}
+                  onClick={() => regen(p.id)}
+                >
+                  {regenId === p.id ? 'Regenerating…' : 'Regenerate'}
+                </button>
+              </details>
             </div>
             <button className="small secondary" onClick={() => setEditing({ ...p, active: !!p.active })}>Edit</button>
             <button className="small danger" onClick={() => remove(p.id)}>Delete</button>

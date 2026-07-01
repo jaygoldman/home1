@@ -127,6 +127,17 @@ ensureColumn('settings', 'device_hostname', "device_hostname TEXT DEFAULT ''");
 if (ensureColumn('settings', 'quiet_enabled', "quiet_enabled INTEGER NOT NULL DEFAULT 0")) {
   db.prepare(`UPDATE settings SET quiet_enabled = 1 WHERE quiet_start <> '' AND quiet_end <> ''`).run();
 }
+// Per-person "word bank": a small palette of alternate words/imagery derived
+// once on save from traits/interests/notes, so the poet has fresh diction for
+// the same subject. word_bank_src fingerprints the source text so we only
+// re-derive when it actually changes. (See server/poem/vocab.js.)
+ensureColumn('people', 'word_bank', "word_bank TEXT DEFAULT ''");
+ensureColumn('people', 'word_bank_src', "word_bank_src TEXT DEFAULT ''");
+ensureColumn('settings', 'vocab_enabled', "vocab_enabled INTEGER NOT NULL DEFAULT 1");
+// Optional holiday tag on a tradition context item: its holiday code (see
+// HOLIDAY_DEFS in poem/temporal.js). Empty = show year-round; tagged = only
+// surface inside that holiday's window, so December traditions stay in December.
+ensureColumn('context_items', 'holiday', "holiday TEXT DEFAULT ''");
 
 // Ensure the singleton settings row exists.
 db.prepare(`INSERT OR IGNORE INTO settings (id) VALUES (1)`).run();
@@ -144,7 +155,7 @@ export function updateSettings(patch) {
     'api_base_url', 'device_hostname', 'quiet_enabled', 'quiet_start', 'quiet_end',
     'bearer_token', 'site_name', 'weather_enabled', 'weather_units',
     'weather_lat', 'weather_lon', 'weather_place', 'news_enabled',
-    'news_good_only', 'news_interval_minutes', 'news_topics',
+    'news_good_only', 'news_interval_minutes', 'news_topics', 'vocab_enabled',
   ];
   const sets = [];
   const vals = [];
