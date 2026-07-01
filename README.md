@@ -150,6 +150,7 @@ server/
     temporal.js       season/holiday/part-of-day context
     weather.js        Open-Meteo geocode + current conditions
     news.js           good-news web-search enrichment (Claude CLI)
+    vocab.js          per-person word bank derived on save
     scheduler.js      per-minute pre-generation + enrichment timers
 web/                  React + Vite config app  (built to web/dist)
 web/public/sim.html   shelf simulator

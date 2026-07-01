@@ -94,6 +94,8 @@ When changing prompts or validators, run `npm run engine:test` to eyeball output
 - Admin routes return `{ error: "..." }` JSON; the web `api.js` wrapper throws on non-2xx and treats 401 as logged-out. Match the existing route shapes in `admin.js`.
 - Match the surrounding code's plain-ESM, comment-the-why style. The inline comments explaining *why* a quirk exists (device contract, voice rules) are load-bearing — keep them when you touch that code.
 
-## Maintaining this file
+## Maintaining the docs
 
-Keep it lean and high-signal — it documents what isn't obvious from the code, not what is. If it drifts from reality (a renamed file, a changed port, a new provider), fix it in the same change.
+Keep this file lean and high-signal — it documents what isn't obvious from the code, not what is. If it drifts from reality (a renamed file, a changed port, a new provider), fix it in the same change.
+
+**`README.md` must stay in sync too.** It's the user-facing doc (public repo), so any change that alters what users see or do — a new/removed provider, a changed port or command, a new setup step, a renamed page or feature, the project-layout map, the device-repointing flow — update `README.md` in the same change. This file (CLAUDE.md) is for working *on* the code; the README is for running it. When a change touches both audiences, edit both.
