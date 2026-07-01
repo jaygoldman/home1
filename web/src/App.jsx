@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard.jsx';
 import People from './pages/People.jsx';
 import Household from './pages/Household.jsx';
 import Notes from './pages/Notes.jsx';
+import Devices from './pages/Devices.jsx';
 import Settings from './pages/Settings.jsx';
 
 export default function App() {
@@ -65,6 +66,7 @@ export default function App() {
             <NavLink to="/people">People &amp; Pets</NavLink>
             <NavLink to="/household">Household</NavLink>
             <NavLink to="/notes">Notes</NavLink>
+            <NavLink to="/devices">Devices</NavLink>
             <NavLink to="/settings">Settings</NavLink>
             <a className="ext" href="/sim" target="_blank" rel="noreferrer">Shelf preview ↗</a>
           </div>
@@ -79,6 +81,7 @@ export default function App() {
           <Route path="/people" element={<People />} />
           <Route path="/household" element={<Household />} />
           <Route path="/notes" element={<Notes />} />
+          <Route path="/devices" element={<Devices />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>

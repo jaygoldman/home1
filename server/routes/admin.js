@@ -176,6 +176,11 @@ adminRouter.post('/devices/:screenId/claim', (req, res) => {
   db.prepare(`UPDATE devices SET is_claimed = ? WHERE screen_id = ?`).run(claimed ? 1 : 0, req.params.screenId);
   res.json(db.prepare(`SELECT * FROM devices WHERE screen_id = ?`).get(req.params.screenId));
 });
+// Forget a device — drops the row. It reappears (unclaimed) if the device checks in again.
+adminRouter.delete('/devices/:screenId', (req, res) => {
+  db.prepare(`DELETE FROM devices WHERE screen_id = ?`).run(req.params.screenId);
+  res.json({ ok: true });
+});
 
 // --- poems history ---
 adminRouter.get('/poems', (req, res) => {

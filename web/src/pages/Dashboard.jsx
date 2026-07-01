@@ -4,20 +4,17 @@ import { api } from '../api.js';
 export default function Dashboard() {
   const [preview, setPreview] = useState(null);
   const [status, setStatus] = useState(null);
-  const [devices, setDevices] = useState([]);
   const [poems, setPoems] = useState([]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 
   async function loadStatus() {
     try {
-      const [s, d, p] = await Promise.all([
+      const [s, p] = await Promise.all([
         api.get('/status'),
-        api.get('/devices'),
         api.get('/poems?limit=12'),
       ]);
       setStatus(s);
-      setDevices(d);
       setPoems(p);
     } catch (e) { setErr(e.message); }
   }
@@ -32,11 +29,6 @@ export default function Dashboard() {
   }
 
   useEffect(() => { loadStatus(); loadPreview(); }, []);
-
-  async function claim(screenId, claimed) {
-    await api.post(`/devices/${screenId}/claim`, { claimed });
-    loadStatus();
-  }
 
   return (
     <div>
@@ -71,23 +63,6 @@ export default function Dashboard() {
             {busy ? 'Composing…' : 'Compose a fresh one'}
           </button>
         </div>
-      </div>
-
-      <h2>Devices</h2>
-      <div className="panel">
-        {devices.length === 0 && <p className="muted">No device has checked in yet. Point your poem1 at this server.</p>}
-        {devices.map((d) => (
-          <div className="list-item" key={d.screen_id}>
-            <div className="grow">
-              <strong>{d.screen_id}</strong>{' '}
-              <span className="muted">· seen {d.seen}× · last {d.last_seen ? new Date(d.last_seen).toLocaleString() : '—'}</span>
-            </div>
-            <span className={`tag ${d.is_claimed ? 'pet' : ''}`}>{d.is_claimed ? 'claimed' : 'unclaimed'}</span>
-            <button className="small secondary" onClick={() => claim(d.screen_id, !d.is_claimed)}>
-              {d.is_claimed ? 'Unclaim' : 'Claim'}
-            </button>
-          </div>
-        ))}
       </div>
 
       <h2>Recent poems</h2>
