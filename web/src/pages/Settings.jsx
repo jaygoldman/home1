@@ -179,13 +179,13 @@ export default function Settings() {
         </label>
         <label style={{ marginTop: 12 }}>Where the clock time goes</label>
         <select value={s.poem_time_style || 'rhyme'} onChange={set('poem_time_style')} style={{ maxWidth: 320 }}>
-          <option value="rhyme">Woven into the rhyme (…surprise / it’s 9:45)</option>
+          <option value="rhyme">Woven in anywhere (9:45 sits inside the lines)</option>
           <option value="start">At the start (At 9:45, …)</option>
         </select>
         <p className="muted" style={{ fontSize: 12 }}>
           {s.poem_time_style === 'start'
             ? 'Each poem opens with the time, e.g. “At 9:45, …”.'
-            : 'The time lands as a rhyme — the poet hears 9:45 as “nine forty-five” and rhymes it (e.g. with “alive”). Needs rhyming on to take effect.'}
+            : 'The time can land anywhere — opening a line, woven mid-line, or ending a line as the rhyme itself (9:09 read as “nine oh nine”). The two lines rhyme; the poet decides where the time sits.'}
         </p>
         <label style={{ marginTop: 12 }}>Device bearer token</label>
         <input value={s.bearer_token} onChange={set('bearer_token')} />

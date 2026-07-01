@@ -142,14 +142,15 @@ function pickFocus({ people, ctx, temporal, wx }) {
 }
 
 function systemPrompt(tone, rhyme, timeStyle) {
-  // Where the clock time sits. 'start' opens the poem with the time and keeps
-  // numbers off the line-ends; 'rhyme' lands the time as a rhyme word.
-  const timeInRhyme = rhyme && timeStyle === 'rhyme';
+  // Where the clock time sits. 'start' opens the poem with the time; 'rhyme'
+  // lets it sit anywhere the poem reads best. Either way, when rhyming, the
+  // line-ends carry the rhyme on real words — numbers never end a line.
   let rhymeRule;
-  if (timeInRhyme) {
-    rhymeRule = 'The lines MUST rhyme. End ONE line on the clock time itself: read the time aloud and treat its final spoken word as the rhyme (e.g. 2:07 is "two oh seven" → rhyme on "seven"; 9:45 is "nine forty-five" → rhyme on "five"). A round hour can be read either way — 10:00 is "ten o\'clock" → rhyme on "o\'clock", OR simply "ten" → rhyme on "ten" — so use whichever reads better. The partner line\'s final word must rhyme cleanly with that spoken time as actually heard. Write the time itself as digits at the end of its line, woven into the grammar as a phrase like "at 2:32" — NEVER tack it on after a comma or dash once the line has already ended on another word. The whole poem has exactly ONE rhyming pair (the time and its partner); never let a third line-ending land on that same rhyme.';
-  } else if (rhyme) {
-    rhymeRule = 'The lines MUST rhyme: the final word of each line has to rhyme cleanly with its partner as the words are actually spoken (a true rhyme, not just similar spelling). Do NOT end a line on the clock time or any number — numbers are hard to rhyme — so place the digits at the START of the poem and end the lines on real rhyming words.';
+  if (rhyme) {
+    rhymeRule = 'The lines MUST rhyme: the final word of each line has to rhyme cleanly with its partner as the words are actually spoken (a true rhyme, not just similar spelling).';
+    rhymeRule += timeStyle === 'start'
+      ? ' The digits open the poem, so end the lines on real rhyming words — do not end a line on a number.'
+      : ' The clock time is spoken aloud as words ("9:45" is heard as "nine forty-five", "9:09" as "nine oh nine"), so a line MAY end on the time and rhyme on that spoken sound, OR the time can sit mid-line and the lines rhyme on ordinary words — either is good, as long as the two lines truly rhyme.';
   } else {
     rhymeRule = 'Do NOT force a rhyme; free verse is good.';
   }
@@ -183,83 +184,6 @@ function displayTime(time24) {
 
 const ampm = (time24) => (Number(time24.split(':')[0]) < 12 ? 'AM' : 'PM');
 
-// --- how a clock time SOUNDS, so the poet can rhyme it ---------------------
-// The device reads "2:07" aloud as "two oh seven", "9:45" as "nine forty-five",
-// "3:00" as "three o'clock". What a line ending on the time has to rhyme with is
-// the LAST spoken word ("seven", "five", "o'clock"), so we expose that word plus
-// a handful of clean rhymes to seed the poet.
-const ONES = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
-const TEENS = ['ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen',
-  'sixteen', 'seventeen', 'eighteen', 'nineteen'];
-const TENS = { 2: 'twenty', 3: 'thirty', 4: 'forty', 5: 'fifty' };
-
-// Spell a minute value (0–59) the way a clock speaks it, and return the final word.
-function minuteWords(m) {
-  if (m < 10) return { words: ONES[m], last: ONES[m] };          // single ones word
-  if (m < 20) return { words: TEENS[m - 10], last: TEENS[m - 10] };
-  const tens = TENS[Math.floor(m / 10)];
-  const one = m % 10;
-  if (!one) return { words: tens, last: tens };                  // twenty, thirty…
-  return { words: `${tens}-${ONES[one]}`, last: ONES[one] };       // forty-five -> five
-}
-
-// Clean rhymes for every word a spoken time can end on. Hard cases (twelve,
-// forty, o'clock) get the best available near-rhymes; the poet does the rest.
-const RHYMES = {
-  "o'clock": ['clock', 'rock', 'lock', 'knock', 'flock', 'block', 'dock'],
-  one: ['sun', 'done', 'fun', 'run', 'begun', 'none', 'spun'],
-  two: ['blue', 'through', 'new', 'true', 'view', 'dew', 'too'],
-  three: ['free', 'tree', 'sea', 'key', 'tea', 'me', 'be'],
-  four: ['door', 'more', 'shore', 'floor', 'before', 'pour', 'core'],
-  five: ['alive', 'arrive', 'drive', 'dive', 'thrive', 'survive', 'hive'],
-  six: ['tricks', 'mix', 'fix', 'sticks', 'bricks', 'ticks'],
-  seven: ['heaven', 'eleven', 'leaven'],
-  eight: ['late', 'wait', 'gate', 'state', 'straight', 'weight', 'fate'],
-  nine: ['shine', 'line', 'mine', 'sign', 'divine', 'design', 'wine'],
-  ten: ['again', 'then', 'pen', 'when', 'men', 'hen'],
-  eleven: ['heaven', 'seven'],
-  twelve: ['shelve', 'delve', 'themselves'],
-  thirteen: ['green', 'seen', 'between', 'machine', 'serene', 'clean'],
-  fourteen: ['green', 'seen', 'between', 'machine', 'serene', 'clean'],
-  fifteen: ['green', 'seen', 'between', 'machine', 'serene', 'clean'],
-  sixteen: ['green', 'seen', 'between', 'machine', 'serene', 'clean'],
-  seventeen: ['green', 'seen', 'between', 'machine', 'serene', 'clean'],
-  eighteen: ['green', 'seen', 'between', 'machine', 'serene', 'clean'],
-  nineteen: ['green', 'seen', 'between', 'machine', 'serene', 'clean'],
-  twenty: ['plenty', 'many'],
-  thirty: ['dirty', 'flirty', 'sturdy'],
-  forty: ['shorty', 'sporty', 'naughty'],
-  fifty: ['nifty', 'shifty', 'thrifty'],
-};
-
-// Spell an hour (1–12) the way a clock speaks it.
-const hourWord = (h12) => (h12 < 10 ? ONES[h12] : TEENS[h12 - 10]);
-
-// Full spoken form + the word(s) a line ending on the time can rhyme with, for a
-// 24h "HH:MM". `readings` lists every legitimate spoken ending: usually one, but a
-// round hour reads as "ten o'clock" OR simply "ten", and "ten" rhymes far more
-// easily than "o'clock", so we offer the poet both.
-function spokenTime(time24) {
-  const [h, m] = time24.split(':').map(Number);
-  const h12 = ((h + 11) % 12) + 1;
-  if (m === 0) {
-    const hw = hourWord(h12);
-    return {
-      spoken: `${hw} o'clock`,
-      readings: [
-        { word: "o'clock", rhymes: RHYMES["o'clock"] },
-        { word: hw, rhymes: RHYMES[hw] || [] },
-      ],
-    };
-  }
-  const mw = minuteWords(m);
-  const joiner = m < 10 ? ' oh ' : ' ';
-  return {
-    spoken: `${hourWord(h12)}${joiner}${mw.words}`,
-    readings: [{ word: mw.last, rhymes: RHYMES[mw.last] || [] }],
-  };
-}
-
 // Plain-language part of day for a 24h hour, so the poem never calls 11pm "morning".
 function dayPhrase(time24) {
   const h = Number(time24.split(':')[0]);
@@ -274,26 +198,12 @@ function dayPhrase(time24) {
 
 function buildUserPrompt(focus, time24, { retry = false, rhyme = false, name = '', timeStyle = 'rhyme', palette = '', angle = '', avoid = [] } = {}) {
   const digits = displayTime(time24);
-  const timeInRhyme = rhyme && timeStyle === 'rhyme';
-  const sp = timeInRhyme ? spokenTime(time24) : null;
 
   let timeRule;
-  if (timeInRhyme) {
-    const choices = sp.readings.map((r) => {
-      const hints = r.rhymes.length ? ` (e.g. ${r.rhymes.slice(0, 6).join(', ')})` : '';
-      return `"${r.word}"${hints}`;
-    }).join(' or ');
-    const multi = sp.readings.length > 1
-      ? ` It can be heard as "${sp.spoken}" or simply "${sp.readings[1].word}", so`
-      : ` Spoken aloud it sounds like "${sp.spoken}", so`;
-    // Vary which line carries the time so the poem doesn't always close on it —
-    // sometimes the time OPENS the couplet and the second line answers the rhyme.
-    const posRule = Math.random() < 0.5
-      ? ` Put the time on the FIRST line — end the opening line with ${digits}, then let the second line land the rhyming word. Do NOT end the poem on the time this round.`
-      : ` Put the time on the LAST line — end the poem with ${digits}, with the line before setting up the rhyme.`;
-    timeRule = `End one line on the time, written as these exact digits ${digits}, placed as that line's final token.${multi} make the OTHER line's last word rhyme cleanly with ${choices}.${posRule} The digits must be the natural grammatical end of their line — woven in as a phrase like "at ${digits}" or "by ${digits}", NOT tacked on after a comma or dash. The poem has exactly ONE rhyming pair: the time is one half, its partner line's last word is the other. Do NOT give any line a separate end-rhyme of its own (no third rhyming word), and do not let a complete rhyming line then have the time appended. CRUCIAL: the line holding the time must lead in on a word that does NOT rhyme with the time — never place a rhyming or near-rhyming word right before the digits (e.g. for ${digits} do not write "...alive at ${digits}" or "...somehow fits at ${digits}"). Only the digits carry the rhyme on that line; everything before them is plain.`;
-  } else if (timeStyle === 'start') {
+  if (timeStyle === 'start') {
     timeRule = `Begin the poem with the time, as these exact digits ${digits} (e.g. "At ${digits}, …"). Do not end any line on a number.`;
+  } else if (rhyme) {
+    timeRule = `Make the two lines rhyme cleanly with each other. Include the time as these exact digits ${digits} somewhere in the poem — it can open a line, sit mid-line, or END a line as the rhyme itself. Spoken aloud the digits are words (e.g. 9:45 is "nine forty-five", 9:09 is "nine oh nine"), so a line ending on ${digits} rhymes on that sound. Whatever you choose, make sure the two lines genuinely rhyme.`;
   } else {
     timeRule = `Include the time as these exact digits: ${digits} — but not as the last word of a line.`;
   }
@@ -301,12 +211,7 @@ function buildUserPrompt(focus, time24, { retry = false, rhyme = false, name = '
   let retryRule = '';
   if (retry) {
     const nameNote = name ? ` (it must use the name "${name}" and NO pronouns like he/she/they/him/her/his/their)` : '';
-    let rhymeNote = '';
-    if (timeInRhyme) {
-      const words = sp.readings.map((r) => `"${r.word}"`).join(' or ');
-      rhymeNote = ` The lines must truly rhyme, and one line must END on the digits ${digits} with the other line rhyming on ${words}.`;
-    }
-    else if (rhyme) rhymeNote = ' The lines must truly rhyme, and no line may end on the time/number.';
+    const rhymeNote = rhyme ? ' The two lines must truly rhyme with each other.' : '';
     retryRule = `IMPORTANT: your last attempt didn't work${nameNote}. Do NOT address anyone as "you", and do not use sky imagery that contradicts the time of day.${rhymeNote} Keep the digits ${digits} verbatim and keep it to 2 short lines.`;
   }
 
@@ -343,74 +248,6 @@ function rhymeShapeOk(text) {
 }
 
 const lines = (text) => text.split(' / ').map((l) => l.trim()).filter(Boolean);
-
-// 'rhyme' style: a line must actually END on the clock time so it lands as the
-// rhyme — trailing punctuation is fine, but the digits must be the last token.
-function timeAtLineEnd(text, time24) {
-  const ds = displayTime(time24).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const re = new RegExp(`${ds}[\\s)"'.,!?;:–—-]*$`);
-  return lines(text).some((l) => re.test(l));
-}
-
-// 'rhyme' style: the time must be WOVEN into its line as a phrase ("…at 2:32"),
-// not tacked on after a comma/dash once the line already ended on another word
-// ("…like only Leia can do, 2:32"). The add-on form leaves the real rhyme word
-// in place and makes the time a third wheel, so reject it.
-function timeWovenIn(text, time24) {
-  const ds = displayTime(time24).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const endLine = lines(text).find((l) => new RegExp(`${ds}[\\s)"'.,!?;:–—-]*$`).test(l));
-  if (!endLine) return false;
-  // a real word followed by comma/dash/colon/semicolon then the time = add-on tail
-  return !new RegExp(`[a-z][\\s]*[,;:—–-]\\s*${ds}[\\s)"'.,!?;:–—-]*$`, 'i').test(endLine);
-}
-
-// Crude rhyme tail (no pronunciation dictionary): drop a silent trailing 'e',
-// then take from the last vowel to the end. "five"/"alive"/"thrive" all -> "iv".
-function rhymeKey(w) {
-  w = String(w).toLowerCase().replace(/[^a-z]/g, '');
-  if (!w) return '';
-  if (w.length > 2 && w.endsWith('e') && !/[aeiou]/.test(w.slice(-2, -1))) w = w.slice(0, -1);
-  const m = w.match(/[aeiouy][a-z]*$/);
-  return m ? m[0] : w;
-}
-
-// Does a word rhyme with the spoken time? Checks the curated rhyme lists first,
-// then the crude vowel-tail key as a fallback for words not in the lists.
-function wordRhymesTime(word, sp) {
-  const w = String(word).toLowerCase().replace(/[^a-z']/g, '').replace(/'/g, '');
-  if (!w || !sp) return false;
-  const key = rhymeKey(w);
-  return sp.readings.some((r) =>
-    w === r.word.toLowerCase().replace(/[^a-z]/g, '') ||
-    r.rhymes.some((x) => x.toLowerCase() === w) ||
-    (key && rhymeKey(r.word) === key) ||
-    r.rhymes.some((x) => rhymeKey(x) === key));
-}
-
-// The line that holds the time must LEAD IN on a non-rhyming word — only the
-// digits carry the rhyme there. "…the kids alive at 3:35" is a triple rhyme
-// (alive / five / its partner), so reject when the word before the time rhymes
-// with it. Also reject when 2+ other lines rhyme with the time (a cross-line
-// triple). The single partner line that rhymes with the time is fine.
-function rhymeIsClean(text, time24, sp) {
-  if (!sp) return true;
-  const ds = displayTime(time24).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const ls = lines(text);
-  const tail = new RegExp(`${ds}[\\s)"'.,!?;:–—-]*$`);
-  const timeLine = ls.find((l) => tail.test(l));
-  if (!timeLine) return true; // absence handled by timeAtLineEnd
-  // strip the trailing time phrase (incl. an optional connector) and read the
-  // word that leads into it.
-  const head = timeLine.replace(
-    new RegExp(`[\\s,;:—–-]*(?:at|by|it'?s|its|is|near|past|around|reads|says|of|this|'?til|till)?\\s*${ds}[\\s)"'.,!?;:–—-]*$`, 'i'),
-    '');
-  const leadIn = (head.trim().split(/\s+/).pop() || '');
-  if (wordRhymesTime(leadIn, sp)) return false;
-  // count other line-endings that rhyme with the time
-  const others = ls.filter((l) => l !== timeLine);
-  const rhyming = others.filter((l) => wordRhymesTime(l.trim().split(/\s+/).pop() || '', sp)).length;
-  return rhyming < 2;
-}
 
 // 'start' style: the poem opens on the time (first line carries the digits).
 function timeAtStart(text, time24) {
@@ -519,8 +356,6 @@ export async function composePoem(time24, { screenId = '' } = {}) {
 
   const rhyme = !!s.poem_rhyme;
   const timeStyle = s.poem_time_style === 'start' ? 'start' : 'rhyme';
-  const timeInRhyme = rhyme && timeStyle === 'rhyme';
-  const sp = timeInRhyme ? spokenTime(time24) : null;
   for (let attempt = 0; attempt < 3 && !text; attempt++) {
     try {
       const raw = await generate(buildUserPrompt(focus, time24, { retry: attempt > 0, rhyme, name, timeStyle, palette, angle, avoid }), {
@@ -529,12 +364,13 @@ export async function composePoem(time24, { screenId = '' } = {}) {
         lane: 'poem',
       });
       const norm = normalizePoem(raw);
-      // Time placement: rhyme-style must end a line on the time; start-style must
-      // open on it. Only the front-loaded rhyme variant bans line-ending numbers.
-      const timeOk = timeInRhyme ? (timeAtLineEnd(norm, time24) && timeWovenIn(norm, time24) && rhymeIsClean(norm, time24, sp))
-        : timeStyle === 'start' ? timeAtStart(norm, time24)
-        : true;
-      const shapeOk = timeInRhyme ? true : (!rhyme || rhymeShapeOk(norm));
+      // Time placement: 'start' must open on the time; 'rhyme' just needs it
+      // present (looksValid checks that) anywhere — including a line-end, where
+      // it rhymes on its spoken form. We only forbid line-ending numbers in
+      // 'start' mode (the digits are up front, so the couplet rhymes on words);
+      // in 'rhyme' mode we trust the poet to make the two lines rhyme.
+      const timeOk = timeStyle === 'start' ? timeAtStart(norm, time24) : true;
+      const shapeOk = (rhyme && timeStyle === 'start') ? rhymeShapeOk(norm) : true;
       if (looksValid(norm, time24) && timeOk && shapeOk && nameNotPronoun(norm, name) && noSecondPerson(norm)) {
         text = norm;
         source = 'claude';
