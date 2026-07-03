@@ -3,6 +3,9 @@
   <img src="docs/home1-lockup.png" alt="Home/1" width="242">
 </picture>
 
+## A quiet clock that learns the house by heart
+## and gives each passing minute back as art
+
 A self-hosted, **personalized** server for the [poem.town](https://poem.town) **Poem/1** clock.
 
 Out of the box, Poem/1 shows a new (often charmingly random) poem every minute with the time woven in. **Home/1** points the device at your own server so the poems are about *your* household — your people and pets, your city, your teams, the season, today's weather, and even a little good news — while still honoring the device contract: **one short poem per minute, with the time in it.**
