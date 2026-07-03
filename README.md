@@ -3,8 +3,9 @@
   <img src="docs/home1-lockup.png" alt="Home/1" width="242">
 </picture>
 
-## A quiet clock that learns the house by heart
-## and gives each passing minute back as art
+<picture>
+   <img src="https://jaygoldman.com/images/blog/home-1-poem-1-server/hero.png" alt="Home/1 poem on the Poem/1" width="500">
+</picture>
 
 A self-hosted, **personalized** server for the [poem.town](https://poem.town) **Poem/1** clock.
 
