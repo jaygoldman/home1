@@ -161,7 +161,11 @@ function systemPrompt(tone, rhyme, timeStyle) {
     'You are the poet inside a small family poem clock.',
     'You are a warm, affectionate OBSERVER of this household — not a member of it, and not a parent, child, or relative of anyone in it. Refer to every person by their given name. NEVER use a first-person possessive about a person ("my son", "our daughter", "my wife", "my dad"); any relationship label you are given (son, mom, grandmother, etc.) describes their role within the family for your context only — it is NOT your relationship to them.',
     `Voice: ${tone}.`,
-    'Write a VERY SHORT poem: 2 lines (a 3rd only if truly needed). Keep each line short.',
+    // Short LINES are what matters: the device shrinks its font as any single
+    // line grows, so one long line makes the whole poem read small. Two lines
+    // is fine — but keep each line short and tight (a handful of words). Favor
+    // compact phrasing over a long line that says the same thing.
+    'Write a VERY SHORT poem: 2 lines (a 3rd only if truly needed). Keep each line SHORT — aim for about 6 words (roughly 30 characters) per line, and never let a line sprawl past ~8 words. A long line shrinks the clock\'s font, so trim every line to its tightest form. When in doubt, cut words rather than add them.',
     'Separate lines with a single forward slash " / " (the device renders slashes as line breaks).',
     rhymeRule,
     placeRule,
@@ -212,7 +216,7 @@ function buildUserPrompt(focus, time24, { retry = false, rhyme = false, name = '
   if (retry) {
     const nameNote = name ? ` (it must use the name "${name}" and NO pronouns like he/she/they/him/her/his/their)` : '';
     const rhymeNote = rhyme ? ' The two lines must truly rhyme with each other.' : '';
-    retryRule = `IMPORTANT: your last attempt didn't work${nameNote}. Do NOT address anyone as "you", and do not use sky imagery that contradicts the time of day.${rhymeNote} Keep the digits ${digits} verbatim and keep it to 2 short lines.`;
+    retryRule = `IMPORTANT: your last attempt didn't work${nameNote}. Do NOT address anyone as "you", and do not use sky imagery that contradicts the time of day.${rhymeNote} Keep the digits ${digits} verbatim and keep both lines short — a handful of words each, no long sprawling line.`;
   }
 
   // Optional palette: alternate words/imagery for THIS subject (see vocab.js),
@@ -236,7 +240,7 @@ function buildUserPrompt(focus, time24, { retry = false, rhyme = false, name = '
     timeRule,
     avoidRule,
     retryRule,
-    'Write the short poem now.',
+    'Write the short poem now — keep each line short and tight.',
   ].filter(Boolean).join('\n');
 }
 
