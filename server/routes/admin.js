@@ -9,6 +9,7 @@ import { deriveVocab } from '../poem/vocab.js';
 import { buildContextBlock } from '../poem/engine.js';
 import { HOLIDAY_DEFS } from '../poem/temporal.js';
 import { lanIPv4s } from '../net.js';
+import { sendImessage } from '../alerts.js';
 import { HTTPS_PORT, PORT } from '../config.js';
 
 export const adminRouter = express.Router();
@@ -146,6 +147,17 @@ adminRouter.put('/settings', (req, res) => {
   }
   bumpContextVersion();
   res.json(getSettings());
+});
+
+// Send a test iMessage to the configured alert recipient.
+adminRouter.post('/alerts/test', async (req, res) => {
+  if (!(getSettings().alert_imessage || '').trim()) return res.status(400).json({ error: 'Set an iMessage recipient first' });
+  try {
+    await sendImessage('Home/1 test alert — outage texts will arrive here.');
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // --- notes (family messages on the clock) ---

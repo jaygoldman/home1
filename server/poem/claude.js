@@ -64,7 +64,13 @@ function _run(prompt, opts) {
       done = true;
       clearTimeout(timer);
       if (code !== 0) {
-        reject(new Error(`claude exited ${code}: ${stderr.slice(0, 500)}`));
+        // With --output-format json the CLI reports errors (e.g. "Not logged
+        // in") in the JSON on stdout, leaving stderr empty — surface either.
+        let detail = stderr.trim();
+        if (!detail) {
+          try { detail = String(JSON.parse(stdout).result ?? ''); } catch { detail = stdout.trim(); }
+        }
+        reject(new Error(`claude exited ${code}: ${detail.slice(0, 500)}`));
         return;
       }
       try {

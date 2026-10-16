@@ -36,6 +36,8 @@ Context layered into every poem: your **people/pets & household facts**, **tempo
 
 If generation fails or times out, a built-in **fallback verse** is served so the clock never goes blank.
 
+**Outage alerts (macOS).** A fallback is easy to miss — e.g. if the Claude CLI's login expires, the clock silently serves fallbacks until someone notices. Set an **iMessage recipient** in **Settings → Alerts** and the server texts it (via Messages on the host Mac, `scripts/imessage-push.sh`) once generation has failed 5 minutes straight, every 6 hours while it stays down, and again on recovery. Use **Send test** to confirm; the first send may trigger a macOS prompt to let the server control Messages.
+
 ---
 
 ## Quick start
@@ -148,6 +150,7 @@ server/
   auth.js             username/password + session
   routes/device.js    Poem/1 device API
   routes/admin.js     config API for the web app
+  alerts.js           iMessage outage alerts (macOS)
   poem/
     provider.js       provider dispatch (Claude CLI / Anthropic / OpenAI)
     claude.js         `claude -p` runner (single-flight lanes)
@@ -159,6 +162,7 @@ server/
     scheduler.js      per-minute pre-generation + enrichment timers
 web/                  React + Vite config app  (built to web/dist)
 web/public/sim.html   shelf simulator
+scripts/imessage-push.sh  send an iMessage via Messages (used by alerts.js)
 ```
 
 Working on the code? See **[CLAUDE.md](CLAUDE.md)** for the engine invariants, device-API quirks, and how the server runs in production.

@@ -137,6 +137,7 @@ ensureColumn('settings', 'vocab_enabled', "vocab_enabled INTEGER NOT NULL DEFAUL
 // Optional holiday tag on a tradition context item: its holiday code (see
 // HOLIDAY_DEFS in poem/temporal.js). Empty = show year-round; tagged = only
 // surface inside that holiday's window, so December traditions stay in December.
+ensureColumn('settings', 'alert_imessage', "alert_imessage TEXT DEFAULT ''");
 ensureColumn('context_items', 'holiday', "holiday TEXT DEFAULT ''");
 
 // Ensure the singleton settings row exists.
@@ -155,7 +156,7 @@ export function updateSettings(patch) {
     'api_base_url', 'device_hostname', 'quiet_enabled', 'quiet_start', 'quiet_end',
     'bearer_token', 'site_name', 'weather_enabled', 'weather_units',
     'weather_lat', 'weather_lon', 'weather_place', 'news_enabled',
-    'news_good_only', 'news_interval_minutes', 'news_topics', 'vocab_enabled',
+    'news_good_only', 'news_interval_minutes', 'news_topics', 'vocab_enabled', 'alert_imessage',
   ];
   const sets = [];
   const vals = [];

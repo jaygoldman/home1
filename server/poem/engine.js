@@ -4,6 +4,7 @@ import { db, getSettings, contextVersion } from '../db.js';
 import { temporalContext, holidayActive } from './temporal.js';
 import { weatherLine } from './weather.js';
 import { generate } from './provider.js';
+import { noteGeneration } from '../alerts.js';
 
 function activePeople() {
   return db.prepare(`SELECT * FROM people WHERE active = 1 ORDER BY id`).all();
@@ -357,6 +358,8 @@ export async function composePoem(time24, { screenId = '' } = {}) {
   let text = '';
   let source = 'fallback';
   let model = s.model;
+  let errors = 0;
+  let lastError = '';
 
   const rhyme = !!s.poem_rhyme;
   const timeStyle = s.poem_time_style === 'start' ? 'start' : 'rhyme';
@@ -383,6 +386,8 @@ export async function composePoem(time24, { screenId = '' } = {}) {
       }
     } catch (err) {
       console.error(`[engine] claude failed (attempt ${attempt + 1}):`, err.message);
+      errors += 1;
+      lastError = err.message;
     }
   }
 
@@ -396,6 +401,9 @@ export async function composePoem(time24, { screenId = '' } = {}) {
     pushRecent(recentSubjects, key, RECENT_SUBJECTS_MAX);
     pushRecent(recentPoems, text, RECENT_POEMS_MAX);
   }
+
+  // Every attempt threw => the provider is down (not just a picky validator).
+  noteGeneration({ ok: source === 'claude', errored: errors === 3, error: lastError });
 
   const poemId = newPoemId();
   db.prepare(

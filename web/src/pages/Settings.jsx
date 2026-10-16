@@ -50,6 +50,12 @@ export default function Settings() {
     try { const r = await api.post('/news/refresh'); flash(`News refreshed (${r.stored} stored).`); setEvents(r.events || []); }
     catch (e) { setErr(e.message); } finally { setBusy(''); }
   }
+  async function testAlert() {
+    setBusy('alert'); setErr('');
+    // Save first so the test goes to the recipient currently in the box.
+    try { setS(await api.put('/settings', s)); await api.post('/alerts/test'); flash('Test iMessage sent.'); }
+    catch (e) { setErr(e.message); } finally { setBusy(''); }
+  }
   async function changePw() {
     if (pw.length < 6) { setErr('Password too short.'); return; }
     try { await api.post('/password', { password: pw }); setPw(''); flash('Password changed.'); }
@@ -234,6 +240,19 @@ export default function Settings() {
             ))}
           </div>
         )}
+      </div>
+
+      <h2>Alerts</h2>
+      <div className="panel">
+        <div className="row">
+          <div><label>iMessage recipient (blank = off)</label><input value={s.alert_imessage || ''} onChange={set('alert_imessage')} placeholder="+15555550123 or you@icloud.com" /></div>
+          <div style={{ flex: 'none', alignSelf: 'end' }}>
+            <button className="secondary" onClick={testAlert} disabled={busy === 'alert'}>{busy === 'alert' ? 'Sending…' : 'Send test'}</button>
+          </div>
+        </div>
+        <p className="muted" style={{ fontSize: 12 }}>
+          Texts this address (via Messages on this Mac) when poem generation has failed for 5 minutes straight — e.g. the Claude CLI got logged out — then every 6 hours while it stays down, and once more when real poems return.
+        </p>
       </div>
 
       <h2>Change password</h2>

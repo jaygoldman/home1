@@ -18,6 +18,7 @@ server/
   auth.js           bcrypt username/password + session; requireAuth middleware
   setup.js          `npm run setup` — create admin login, optionally seed city/teams
   net.js  tls.js     LAN IP discovery · self-signed cert generation (for the device's forced-HTTPS)
+  alerts.js         iMessage outage alerts (provider errors 5 min straight → text; recovery → text)
   routes/
     device.js       poem.town device API (bearer auth except /status)
     admin.js         config API for the web app (session auth)
@@ -32,6 +33,7 @@ server/
     vocab.js         per-person "word bank": derive alternate words/imagery on save (any provider)
 web/                React + Vite SPA (pages/ Dashboard, People, Household, Notes, Settings); built to web/dist
 web/public/sim.html browser shelf simulator
+scripts/imessage-push.sh  osascript → Messages sender; recipient from settings.alert_imessage (no default — public repo)
 data/               SQLite DBs, session store, cert, logs — gitignored, created at runtime
 ```
 
@@ -74,7 +76,7 @@ The real Poem/1 firmware deviates from the published spec in ways `index.js` and
 - **Holiday-gated traditions.** A `tradition` context item can carry an optional `holiday` tag (`context_items.holiday`, a code from `HOLIDAY_DEFS` in `temporal.js`). Tagged traditions enter `pickFocus()`'s pool *only* inside that holiday's date window (`holidayActive()`), so Christmas traditions don't surface in July; untagged traditions stay year-round. Windows are wrap-aware (New Year's straddles year-end) and movable feasts use generous approximations. The web app's Holiday drop-down is populated from `GET /api/admin/holidays`.
 - **Observer voice.** The clock writes *about* the household, never *to* or *as* a member. Rejected by validators: any second-person (`you`/`your`), and — when the focus is a person/pet — any third-person pronoun (`he/she/they/him/her/his/their`) or a missing name. A person poem must name the subject and use only the name. Relationship labels (son/mom/…) are context only; they are deliberately kept out of the poem hook (naming them produces "my son" / "Alex loves his mom" when Alex *is* the mom).
 - **The time must appear as digits** exactly as given (`mentionsTime`), never spelled out. When rhyming (`poem_rhyme`), a line must not *end* on the time/number (`rhymeShapeOk`).
-- Up to **3 attempts**, then a built-in **fallback verse** so the clock never goes blank. `normalizePoem()` cleans the raw output (strips fences/quotes, converts newlines to ` / ` separators, normalizes temperatures to `°`).
+- Up to **3 attempts**, then a built-in **fallback verse** so the clock never goes blank. When *all three attempts threw* (provider down, not a validator rejection), `composePoem` reports it to `alerts.js` so the operator gets texted — fallbacks are otherwise invisible. `normalizePoem()` cleans the raw output (strips fences/quotes, converts newlines to ` / ` separators, normalizes temperatures to `°`).
 
 **Anti-repetition (keeps minute-to-minute variety without extra tokens).** `engine.js` holds two in-memory rings (reset on restart, like the cache): `recentSubjects` soft-penalizes (×0.15, never hard-excludes) a subject `key` picked in the last ~5 minutes so the clock doesn't dwell on one person/the weather; `recentPoems` feeds the last ~3 poems to the poet as a "don't echo these" list. Each minute also picks one `pickFacet()` hook (a single comma-split trait, not the whole blob) and rotates an `ANGLES` poetic move. Separately, `vocab.js` derives a per-person **word bank** (`people.word_bank`, gated by `settings.vocab_enabled`) on save — `pickFocus()` passes it to the prompt as an optional palette. All four are additive to the invariants above, not replacements.
 
