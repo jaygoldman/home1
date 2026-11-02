@@ -350,7 +350,12 @@ function newPoemId() {
 }
 
 // Generate (and persist) a poem for the given local time24.
-export async function composePoem(time24, { screenId = '' } = {}) {
+// `stillWanted()` is checked before each attempt: during an outage each attempt
+// can take the full timeout, so the single-flight poem lane backs up and jobs
+// run long after their minute has passed (even into quiet hours). Once the
+// minute is stale we stop rather than burn tokens and fire outage alerts for a
+// poem nobody will see.
+export async function composePoem(time24, { screenId = '', stillWanted = () => true } = {}) {
   const s = getSettings();
   const { desc: focus, name, palette, key } = pickFocus(gather()); // ONE subject for this minute
   const angle = randItem(ANGLES);           // rotate the poetic move
@@ -360,10 +365,15 @@ export async function composePoem(time24, { screenId = '' } = {}) {
   let model = s.model;
   let errors = 0;
   let lastError = '';
+  let abandoned = false;
 
   const rhyme = !!s.poem_rhyme;
   const timeStyle = s.poem_time_style === 'start' ? 'start' : 'rhyme';
   for (let attempt = 0; attempt < 3 && !text; attempt++) {
+    if (!stillWanted()) {
+      abandoned = true;
+      break;
+    }
     try {
       const raw = await generate(buildUserPrompt(focus, time24, { retry: attempt > 0, rhyme, name, timeStyle, palette, angle, avoid }), {
         system: systemPrompt(s.poem_tone, rhyme, timeStyle),
@@ -389,6 +399,13 @@ export async function composePoem(time24, { screenId = '' } = {}) {
       errors += 1;
       lastError = err.message;
     }
+  }
+
+  // Stale minute: hand back a fallback without logging it or counting it
+  // toward outage alerts (the scheduler won't cache it either).
+  if (abandoned && !text) {
+    console.warn(`[engine] abandoned stale minute ${time24}`);
+    return { poemId: newPoemId(), time24, text: fallbackPoem(time24), source: 'fallback', model: '', abandoned: true };
   }
 
   if (!text) {

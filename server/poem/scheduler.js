@@ -47,14 +47,32 @@ export function isScreensaver(time24 = localTime24()) {
   return inQuietHours(time24);
 }
 
+// Is time24 still worth generating right now? Only the minute just past, the
+// current one, or the next (device clocks drift a little either way), and
+// never a quiet-hours minute. Queued jobs re-check this before each attempt.
+function isLive(time24) {
+  if (isScreensaver(time24)) return false;
+  const toMin = (t) => {
+    const [h, m] = t.split(':').map(Number);
+    return h * 60 + m;
+  };
+  const diff = (toMin(time24) - toMin(localTime24()) + 1440) % 1440;
+  return diff <= 1 || diff === 1439;
+}
+
 // Return the cached poem for time24, generating it if needed (coalesced).
+// opts.anyTime skips the liveness check (admin preview of an arbitrary time).
 export async function getPoemForTime(time24, opts = {}) {
   if (cache.has(time24)) return cache.get(time24);
   if (inflight.has(time24)) return inflight.get(time24);
-  const promise = composePoem(time24, opts)
+  const { anyTime, ...rest } = opts;
+  const stillWanted = anyTime ? undefined : () => isLive(time24);
+  const promise = composePoem(time24, { ...rest, stillWanted })
     .then((poem) => {
-      cache.set(time24, poem);
-      prune();
+      if (!poem.abandoned) {
+        cache.set(time24, poem);
+        prune();
+      }
       inflight.delete(time24);
       return poem;
     })
@@ -75,7 +93,12 @@ export function getCachedPoem() {
 // Warm the current minute and pre-generate the next one — but skip any minute
 // that falls in quiet hours (the screen is blank then, so generating would just
 // burn tokens). The wake-up minute is still pre-generated because it isn't quiet.
+// Ticks don't overlap: when the provider is slow/down a tick can outlast the
+// minute, and stacking more ticks would just queue more doomed jobs.
+let ticking = false;
 async function tick() {
+  if (ticking) return;
+  ticking = true;
   try {
     const cur = localTime24();
     if (!isScreensaver(cur) && !cache.has(cur)) await getPoemForTime(cur);
@@ -83,6 +106,8 @@ async function tick() {
     if (!isScreensaver(nxt) && !cache.has(nxt)) await getPoemForTime(nxt);
   } catch (e) {
     console.error('[scheduler] tick error:', e.message);
+  } finally {
+    ticking = false;
   }
 }
 
