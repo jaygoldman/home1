@@ -215,7 +215,7 @@ adminRouter.get('/preview', async (req, res) => {
     });
   }
   try {
-    const poem = await getPoemForTime(t);
+    const poem = await getPoemForTime(t, { anyTime: true });
     res.json({ ...poem, weather: getCachedWeather(), contextBlock: buildContextBlock(t).block });
   } catch (e) {
     res.status(500).json({ error: e.message });
