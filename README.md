@@ -34,9 +34,9 @@ You choose the engine in **Settings → Poem generation**:
 
 Context layered into every poem: your **people/pets & household facts**, **temporal** context (season, part of day, holidays, upcoming birthdays — deterministic, no network), the current **weather** (free, keyless [Open-Meteo](https://open-meteo.com)), and occasionally one fresh **good-news** item (Claude CLI only).
 
-If generation fails or times out, a built-in **fallback verse** is served so the clock never goes blank.
+If generation fails or times out, the clock shows the **time with a short error underneath** (e.g. `Claude login expired`) instead of a poem, so it never goes blank and outages are visible. The device's firmware sets the font size, so on the device both lines render at the same size; the simulator shows the time large over the smaller error.
 
-**Outage alerts (macOS).** A fallback is easy to miss — e.g. if the Claude CLI's login expires, the clock silently serves fallbacks until someone notices. Set an **iMessage recipient** in **Settings → Alerts** and the server texts it (via Messages on the host Mac, `scripts/imessage-push.sh`) once generation has failed 5 minutes straight, every 6 hours while it stays down, and again on recovery. Use **Send test** to confirm; the first send may trigger a macOS prompt to let the server control Messages.
+**Outage alerts (macOS).** A fallback is easy to miss — e.g. if the Claude CLI's login expires, the clock shows error screens until someone notices. Set an **iMessage recipient** in **Settings → Alerts** and the server texts it (via Messages on the host Mac, `scripts/imessage-push.sh`) once generation has failed 5 minutes straight, every 6 hours while it stays down, and again on recovery. Use **Send test** to confirm; the first send may trigger a macOS prompt to let the server control Messages.
 
 ---
 
@@ -154,7 +154,7 @@ server/
   poem/
     provider.js       provider dispatch (Claude CLI / Anthropic / OpenAI)
     claude.js         `claude -p` runner (single-flight lanes)
-    engine.js         focus selection, prompt, validation, fallback
+    engine.js         focus selection, prompt, validation, error screen
     temporal.js       season/holiday/part-of-day context
     weather.js        Open-Meteo geocode + current conditions
     news.js           good-news web-search enrichment (Claude CLI)

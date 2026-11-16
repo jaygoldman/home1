@@ -1,6 +1,6 @@
 // Outage alerts: text the operator (iMessage, macOS only) when poem generation
 // keeps erroring — e.g. the Claude CLI's login expired — so the clock doesn't
-// quietly serve fallback verses for days. The dashboard isn't watched; a text is.
+// quietly serve error screens for days. The dashboard isn't watched; a text is.
 import { execFile } from 'node:child_process';
 import path from 'node:path';
 import { getSettings } from './db.js';
@@ -48,7 +48,7 @@ export function noteGeneration({ ok, errored, error }) {
   if (ok) {
     if (alerted) {
       const mins = Math.round((Date.now() - downSince) / 60000);
-      fire(`Home/1 recovered — real poems are back after ~${mins} min of fallbacks.`);
+      fire(`Home/1 recovered — real poems are back after ~${mins} min of error screens.`);
       console.log('[alerts] generation recovered; sent all-clear');
     }
     failStreak = 0;
@@ -66,7 +66,7 @@ export function noteGeneration({ ok, errored, error }) {
   const mins = Math.round((Date.now() - downSince) / 60000);
   const provider = getSettings().provider;
   const hint = provider === 'claude_cli' ? ' If the Claude CLI is logged out, run `claude` then /login on the server Mac.' : '';
-  fire(`Home/1: poem generation has failed for ~${mins} min (${provider}); the clock is showing fallback verses. Last error: ${String(error || 'unknown').slice(0, 200)}.${hint}`);
+  fire(`Home/1: poem generation has failed for ~${mins} min (${provider}); the clock is showing the time with an error instead of a poem. Last error: ${String(error || 'unknown').slice(0, 200)}.${hint}`);
   console.warn(`[alerts] sent outage alert (streak ${failStreak})`);
   alerted = true;
   lastAlertAt = Date.now();

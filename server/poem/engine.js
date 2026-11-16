@@ -1,5 +1,5 @@
 // Poem engine: assemble context -> prompt -> `claude -p` -> validated poem,
-// with a template fallback so the clock never goes blank.
+// with a time + error screen fallback so the clock never goes blank.
 import { db, getSettings, contextVersion } from '../db.js';
 import { temporalContext, holidayActive } from './temporal.js';
 import { weatherLine } from './weather.js';
@@ -331,16 +331,23 @@ function mentionsTime(text, time24) {
   return [...candidates].some((c) => text.includes(c));
 }
 
-const FALLBACKS = [
-  (t) => `The clock holds ${t} in its quiet hands / and the house breathes slow, unhurried, ours.`,
-  (t) => `At ${t} the kettle thinks about singing / light leans on the table / someone is almost awake.`,
-  (t) => `${t}, and the day folds a small corner down / to mark the place we are.`,
-];
+// When no poem can be made, show the time plus a short reason instead of a
+// canned verse: a made-up poem hid outages (an expired Claude login served
+// fallbacks for days). Line 1 is the time, line 2 the error; ' / ' is the
+// line separator the device and simulator both split on. The device firmware
+// owns font size, so the server can only order the lines — the simulator
+// renders line 1 large using `debug.error` (which the device ignores).
+export function errorReason(lastError, { abandoned = false } = {}) {
+  if (abandoned) return 'Poem service is running slow';
+  const e = String(lastError || '');
+  if (!e) return 'No usable poem this minute';
+  if (/authenticat|login|oauth|setup-token|unauthori[sz]ed|\b401\b|api key not set/i.test(e)) return 'Claude login expired';
+  if (/timed out|timeout/i.test(e)) return 'Claude timed out';
+  return 'Poem service error';
+}
 
-export function fallbackPoem(time24) {
-  // deterministic-ish pick by minute so it varies through the hour
-  const idx = Number(time24.split(':')[1]) % FALLBACKS.length;
-  return FALLBACKS[idx](time24);
+export function errorScreen(time24, reason) {
+  return `${time24} / ${reason}`;
 }
 
 // Short numeric id (fits a 32-bit int, like poem.town's examples) — some
@@ -405,11 +412,14 @@ export async function composePoem(time24, { screenId = '', stillWanted = () => t
   // toward outage alerts (the scheduler won't cache it either).
   if (abandoned && !text) {
     console.warn(`[engine] abandoned stale minute ${time24}`);
-    return { poemId: newPoemId(), time24, text: fallbackPoem(time24), source: 'fallback', model: '', abandoned: true };
+    const error = errorReason(lastError, { abandoned: true });
+    return { poemId: newPoemId(), time24, text: errorScreen(time24, error), source: 'fallback', model: '', error, abandoned: true };
   }
 
+  let error;
   if (!text) {
-    text = fallbackPoem(time24);
+    error = errorReason(lastError);
+    text = errorScreen(time24, error);
     source = 'fallback';
     model = '';
   } else {
@@ -428,7 +438,7 @@ export async function composePoem(time24, { screenId = '', stillWanted = () => t
      VALUES (?, ?, ?, ?, ?, ?, ?)`
   ).run(poemId, time24, text, model, source, contextVersion(), screenId);
 
-  return { poemId, time24, text, source, model };
+  return { poemId, time24, text, source, model, error };
 }
 
 // --- standalone self-test: `node server/poem/engine.js --selftest` ---
