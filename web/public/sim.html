@@ -58,6 +58,8 @@
     font-size: clamp(7px, 1.45cqw, 20px);
   }
   .poem.serif { font-family: 'Newsreader', Georgia, serif; font-weight: 500; }
+  .poem .errtime { display: block; font-size: 2.6em; line-height: 1.05; font-weight: 700; letter-spacing: -0.02em; }
+  .poem .errmsg { display: block; margin-top: .35em; font-size: .85em; font-weight: 500; opacity: .75; }
   .poem.flash { animation: eink .5s steps(2,end); }
   @keyframes eink { 0%,49%{filter:invert(1) contrast(1.4)} 50%,100%{filter:none} }
 
@@ -162,7 +164,16 @@ function render(d) {
   const p = $('poem');
   p.className = 'poem ' + (d.preferredFont==='PLAYFAIR'?'serif':'') + ' flash';
   state.asleep = !!d.screensaver;
-  p.textContent = state.asleep ? '' : (d.poem||'').replace(/ \/ /g, '\n');
+  const err = d.debug && d.debug.error;
+  if (!state.asleep && err) {
+    // No poem this minute: time large, top-left; the reason smaller beneath it.
+    p.textContent = '';
+    const t = document.createElement('span'); t.className = 'errtime'; t.textContent = d.time24 || '';
+    const m = document.createElement('span'); m.className = 'errmsg'; m.textContent = err;
+    p.append(t, m);
+  } else {
+    p.textContent = state.asleep ? '' : (d.poem||'').replace(/ \/ /g, '\n');
+  }
   setTimeout(()=>p.classList.remove('flash'), 500);
   state.poemId = d.poemId; state.liked = false;
   $('savedmsg').textContent = '';

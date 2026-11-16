@@ -122,7 +122,9 @@ deviceRouter.post('/compose', async (req, res) => {
       : undefined,
     preferredFont: s.default_font,
     screensaver,
-    debug: {},
+    // The device ignores `debug`; the simulator reads `error` to render the
+    // time large over a smaller reason when no poem could be made.
+    debug: poem.error ? { error: poem.error } : {},
   });
 });
 
